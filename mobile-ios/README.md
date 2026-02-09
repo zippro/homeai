@@ -46,6 +46,10 @@ cd mobile-ios
 xcodegen generate
 ```
 
+CI note:
+- GitHub Actions generates `HomeAI.xcodeproj` from `project.yml` on each run.
+- Keep `project.yml` as the source of truth.
+
 Build check (requires full Xcode developer directory):
 ```bash
 sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer

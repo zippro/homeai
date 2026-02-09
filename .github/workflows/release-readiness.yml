@@ -1,0 +1,145 @@
+name: Release Readiness
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  backend:
+    name: Backend Quality + Smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run quality checks
+        run: make quality
+
+      - name: Start API for smoke tests
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 >/tmp/homeai-api.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run smoke API flows
+        run: |
+          python scripts/smoke_api_flow.py
+          python scripts/smoke_entitlement_reconciliation.py
+          python scripts/run_experiment_guardrails.py --dry-run --hours 24
+          python scripts/run_experiment_automation.py --dry-run --hours 24 --rollout-limit 200
+
+      - name: Dump API logs on failure
+        if: failure()
+        run: cat /tmp/homeai-api.log
+
+  web:
+    name: Web + Admin Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build web app
+        run: |
+          cd web-app
+          npm run check
+          npm run build
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/styles.css
+
+      - name: Build admin dashboard
+        run: |
+          cd admin-dashboard
+          npm ci
+          npm run check
+          npm run build
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/styles.css
+
+  android:
+    name: Android Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Assemble debug
+        run: |
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+  ios:
+    name: iOS Build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          cd mobile-ios
+          xcodegen generate
+
+      - name: Build for iOS simulator
+        run: |
+          xcodebuild -project mobile-ios/HomeAI.xcodeproj \
+            -scheme HomeAI \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build-for-testing
+
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - web
+      - android
+      - ios
+    steps:
+      - name: Mark release readiness
+        run: echo "All release readiness checks passed."

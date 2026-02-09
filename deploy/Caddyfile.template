@@ -1,0 +1,5 @@
+# Replace domains before use.
+
+api.homeai.example.com {
+  reverse_proxy backend-api:8000
+}

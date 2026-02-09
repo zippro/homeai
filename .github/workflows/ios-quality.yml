@@ -17,6 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          cd mobile-ios
+          xcodegen generate
+
       - name: Build for iOS simulator
         run: |
           xcodebuild -project mobile-ios/HomeAI.xcodeproj \

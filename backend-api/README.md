@@ -28,15 +28,31 @@ python3 scripts/smoke_api_flow.py
 python3 scripts/smoke_entitlement_reconciliation.py
 python3 scripts/run_experiment_guardrails.py --dry-run --hours 24
 python3 scripts/run_experiment_automation.py --dry-run --hours 24 --rollout-limit 200
+python3 scripts/seed_experiment_templates.py
 # Optional: webhook notification + strict exit behavior
 python3 scripts/run_experiment_automation.py --hours 24 --rollout-limit 200 --notify-webhook-url https://hooks.example.com/homeai --fail-on-breach --fail-on-rollout-blocked
 ```
 
 Operational deployment examples: see `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/experiment-automation-operations.md`.
+Release runbook: `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/release-and-operations-runbook.md`.
+
+## Container build
+
+Build:
+```bash
+cd backend-api
+docker build -t homeai-backend:local .
+```
+
+Run:
+```bash
+docker run --rm -p 8000:8000 --env-file .env homeai-backend:local
+```
 
 ## Environment variables
 
 - `DATABASE_URL`: defaults to `sqlite:///./app.db`.
+  PostgreSQL is supported via URLs like `postgresql+psycopg://user:pass@host:5432/dbname`.
 - `ALLOWED_ORIGINS`: defaults to `*`; comma-separated list for CORS (for example `https://admin.yourdomain.com,http://localhost:4173`).
 - `FAL_API_KEY`: required for live fal.ai queue calls.
 - `FAL_QUEUE_BASE`: defaults to `https://queue.fal.run`.
