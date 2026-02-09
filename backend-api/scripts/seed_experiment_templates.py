@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.experiment_store import list_experiment_templates, upsert_experiment
 from app.schemas import AdminActionRequest, ExperimentUpsertRequest
