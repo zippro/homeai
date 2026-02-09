@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timedelta
+from app.time_utils import utc_now
 
 from sqlalchemy import select
 
@@ -10,7 +11,7 @@ from app.models import AnalyticsEventModel
 
 
 def get_provider_health(hours: int = 24) -> dict[str, dict[str, float | int]]:
-    window_start = datetime.utcnow() - timedelta(hours=hours)
+    window_start = utc_now() - timedelta(hours=hours)
     with session_scope() as session:
         stmt = select(AnalyticsEventModel).where(AnalyticsEventModel.created_at >= window_start)
         rows = session.execute(stmt).scalars().all()

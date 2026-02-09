@@ -7,28 +7,29 @@ final class ProfileViewModel: ObservableObject {
     @Published var planId: String = "free"
     @Published var status: String = "inactive"
     @Published var renewsAt: String?
+    @Published var catalog: [Plan] = []
+    @Published var experiments: [ExperimentAssignment] = []
     @Published var errorMessage: String?
 
-    private let client: APIClient
-    private let userId: String
+    private let session: AppSession
 
-    init(client: APIClient, userId: String = "ios_user_demo") {
-        self.client = client
-        self.userId = userId
+    init(session: AppSession) {
+        self.session = session
     }
 
     func loadProfile() async {
         isLoading = true
         errorMessage = nil
         do {
-            async let credit = client.fetchCreditBalance(userId: userId)
-            async let entitlement = client.fetchEntitlement(userId: userId)
-            let (creditResult, entitlementResult) = try await (credit, entitlement)
-
-            balance = creditResult.balance
-            planId = entitlementResult.planId
-            status = entitlementResult.status
-            renewsAt = entitlementResult.renewsAt
+            let userId = session.userId
+            try await session.client.ensureSession(userId: userId)
+            let bootstrap = try await session.client.fetchSessionBootstrap()
+            balance = bootstrap.profile.credits.balance
+            planId = bootstrap.profile.effectivePlan.planId
+            status = bootstrap.profile.entitlement.status
+            renewsAt = bootstrap.profile.entitlement.renewsAt
+            catalog = bootstrap.catalog
+            experiments = bootstrap.experiments.assignments
         } catch {
             errorMessage = "Failed to load profile."
         }
@@ -37,9 +38,15 @@ final class ProfileViewModel: ObservableObject {
 }
 
 struct ProfileHomeView: View {
-    @StateObject private var viewModel = ProfileViewModel(
-        client: APIClient(baseURL: URL(string: "http://localhost:8000")!)
-    )
+    @ObservedObject var session: AppSession
+    @StateObject private var viewModel: ProfileViewModel
+    @State private var userIdInput: String
+
+    init(session: AppSession) {
+        self.session = session
+        _viewModel = StateObject(wrappedValue: ProfileViewModel(session: session))
+        _userIdInput = State(initialValue: session.userId)
+    }
 
     var body: some View {
         NavigationStack {
@@ -51,6 +58,20 @@ struct ProfileHomeView: View {
                         .foregroundStyle(.red)
                 } else {
                     Form {
+                        Section("Account") {
+                            TextField("User ID", text: $userIdInput)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            Button("Use This User") {
+                                let trimmed = userIdInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                                session.updateUserId(trimmed)
+                                userIdInput = session.userId
+                                Task {
+                                    await viewModel.loadProfile()
+                                }
+                            }
+                        }
+
                         Section("Credits") {
                             Text("Balance: \(viewModel.balance)")
                         }
@@ -61,6 +82,40 @@ struct ProfileHomeView: View {
                             if let renewsAt = viewModel.renewsAt {
                                 Text("Renews at: \(renewsAt)")
                                     .font(.footnote)
+                            }
+                        }
+
+                        if !viewModel.catalog.isEmpty {
+                            Section("Plans Catalog") {
+                                ForEach(viewModel.catalog, id: \.planId) { plan in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(plan.displayName)
+                                            .font(.headline)
+                                        Text("ID: \(plan.planId)")
+                                            .font(.footnote)
+                                        Text("Credits/day: \(plan.dailyCredits)")
+                                            .font(.footnote)
+                                        if let monthlyPrice = plan.monthlyPriceUSD {
+                                            Text(String(format: "Price: $%.2f / month", monthlyPrice))
+                                                .font(.footnote)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !viewModel.experiments.isEmpty {
+                            Section("Active Experiments") {
+                                ForEach(viewModel.experiments) { assignment in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(assignment.experimentId)
+                                            .font(.headline)
+                                        Text("Variant: \(assignment.variantId)")
+                                            .font(.footnote)
+                                        Text(assignment.fromCache ? "source: cached" : "source: new assignment")
+                                            .font(.footnote)
+                                    }
+                                }
                             }
                         }
 
@@ -75,7 +130,7 @@ struct ProfileHomeView: View {
                 }
             }
             .navigationTitle("My Profile")
-            .task {
+            .task(id: session.userId) {
                 await viewModel.loadProfile()
             }
         }

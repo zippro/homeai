@@ -4,6 +4,7 @@ enum APIError: Error {
     case requestFailed
     case decodeFailed
     case encodeFailed
+    case unauthorized
 }
 
 enum RenderOperation: String, CaseIterable, Codable {
@@ -36,6 +37,7 @@ enum RenderStatus: String, Codable {
 
 struct RenderJobCreateRequest: Encodable {
     let userId: String?
+    let platform: String?
     let projectId: String
     let imageURL: String
     let styleId: String
@@ -45,6 +47,7 @@ struct RenderJobCreateRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
+        case platform
         case projectId = "project_id"
         case imageURL = "image_url"
         case styleId = "style_id"
@@ -167,13 +170,144 @@ struct SubscriptionEntitlement: Decodable {
     }
 }
 
+struct ProfileOverviewResponse: Decodable {
+    let userId: String
+    let credits: CreditBalanceResponse
+    let entitlement: SubscriptionEntitlement
+    let effectivePlan: Plan
+    let nextCreditResetAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case credits
+        case entitlement
+        case effectivePlan = "effective_plan"
+        case nextCreditResetAt = "next_credit_reset_at"
+    }
+}
+
+struct ExperimentAssignment: Decodable, Identifiable {
+    let experimentId: String
+    let userId: String
+    let variantId: String
+    let fromCache: Bool
+    let assignedAt: String
+
+    var id: String { "\(experimentId):\(userId)" }
+
+    enum CodingKeys: String, CodingKey {
+        case experimentId = "experiment_id"
+        case userId = "user_id"
+        case variantId = "variant_id"
+        case fromCache = "from_cache"
+        case assignedAt = "assigned_at"
+    }
+}
+
+struct ActiveExperimentAssignmentsPayload: Decodable {
+    let userId: String
+    let assignments: [ExperimentAssignment]
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case assignments
+    }
+}
+
+struct SessionBootstrapPayload: Decodable {
+    let me: AuthMePayload
+    let profile: ProfileOverviewResponse
+    let board: UserBoardResponse
+    let experiments: ActiveExperimentAssignmentsPayload
+    let catalog: [Plan]
+    let variables: [String: CodableValue]
+    let providerDefaults: ProviderDefaults
+
+    enum CodingKeys: String, CodingKey {
+        case me
+        case profile
+        case board
+        case experiments
+        case catalog
+        case variables
+        case providerDefaults = "provider_defaults"
+    }
+}
+
+struct DevLoginRequest: Encodable {
+    let userId: String
+    let platform: String
+    let ttlHours: Int
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case platform
+        case ttlHours = "ttl_hours"
+    }
+}
+
+struct AuthSessionPayload: Decodable {
+    let accessToken: String
+    let tokenType: String
+    let userId: String
+    let expiresAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case tokenType = "token_type"
+        case userId = "user_id"
+        case expiresAt = "expires_at"
+    }
+}
+
+struct AuthMePayload: Decodable {
+    let userId: String
+    let platform: String?
+    let expiresAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case platform
+        case expiresAt = "expires_at"
+    }
+}
+
 final class APIClient {
     private let baseURL: URL
     private let session: URLSession
+    private var sessionToken: String?
 
     init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
+    }
+
+    func ensureSession(userId: String, platform: String = "ios") async throws {
+        if sessionToken != nil {
+            do {
+                let endpoint = baseURL.appendingPathComponent("v1/auth/me")
+                let request = URLRequest(url: endpoint)
+                let me = try await send(request, responseType: AuthMePayload.self)
+                if me.userId == userId {
+                    return
+                }
+                sessionToken = nil
+            } catch {
+                sessionToken = nil
+            }
+        }
+        let endpoint = baseURL.appendingPathComponent("v1/auth/login-dev")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload = DevLoginRequest(userId: userId, platform: platform, ttlHours: 24 * 30)
+        do {
+            request.httpBody = try JSONEncoder().encode(payload)
+        } catch {
+            throw APIError.encodeFailed
+        }
+        let auth = try await send(request, responseType: AuthSessionPayload.self)
+        sessionToken = auth.accessToken
     }
 
     func fetchBootstrapConfig() async throws -> BootstrapConfig {
@@ -237,9 +371,55 @@ final class APIClient {
         return try await send(request, responseType: SubscriptionEntitlement.self)
     }
 
+    func fetchProfileOverview(userId: String) async throws -> ProfileOverviewResponse {
+        let endpoint = baseURL.appendingPathComponent("v1/profile/overview/\(userId)")
+        let request = URLRequest(url: endpoint)
+        return try await send(request, responseType: ProfileOverviewResponse.self)
+    }
+
+    func fetchSubscriptionCatalog() async throws -> [Plan] {
+        let endpoint = baseURL.appendingPathComponent("v1/subscriptions/catalog")
+        let request = URLRequest(url: endpoint)
+        return try await send(request, responseType: [Plan].self)
+    }
+
+    func fetchActiveExperiments(userId: String) async throws -> [ExperimentAssignment] {
+        let endpoint = baseURL.appendingPathComponent("v1/experiments/active/\(userId)")
+        let request = URLRequest(url: endpoint)
+        let payload = try await send(request, responseType: ActiveExperimentAssignmentsPayload.self)
+        return payload.assignments
+    }
+
+    func fetchSessionBootstrap(
+        boardLimit: Int = 30,
+        experimentLimit: Int = 50
+    ) async throws -> SessionBootstrapPayload {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("v1/session/bootstrap/me"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: "board_limit", value: String(boardLimit)),
+            URLQueryItem(name: "experiment_limit", value: String(experimentLimit)),
+        ]
+        guard let endpoint = components?.url else {
+            throw APIError.requestFailed
+        }
+        let request = URLRequest(url: endpoint)
+        return try await send(request, responseType: SessionBootstrapPayload.self)
+    }
+
     private func send<T: Decodable>(_ request: URLRequest, responseType: T.Type) async throws -> T {
-        let (data, response) = try await session.data(for: request)
+        var authorizedRequest = request
+        if let token = sessionToken {
+            authorizedRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: authorizedRequest)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+                sessionToken = nil
+                throw APIError.unauthorized
+            }
             throw APIError.requestFailed
         }
 
@@ -268,12 +448,26 @@ struct Plan: Decodable {
     let displayName: String
     let isActive: Bool
     let dailyCredits: Int
+    let previewCostCredits: Int?
+    let finalCostCredits: Int?
+    let monthlyPriceUSD: Double?
+    let iosProductId: String?
+    let androidProductId: String?
+    let webProductId: String?
+    let features: [String]?
 
     enum CodingKeys: String, CodingKey {
         case planId = "plan_id"
         case displayName = "display_name"
         case isActive = "is_active"
         case dailyCredits = "daily_credits"
+        case previewCostCredits = "preview_cost_credits"
+        case finalCostCredits = "final_cost_credits"
+        case monthlyPriceUSD = "monthly_price_usd"
+        case iosProductId = "ios_product_id"
+        case androidProductId = "android_product_id"
+        case webProductId = "web_product_id"
+        case features
     }
 }
 

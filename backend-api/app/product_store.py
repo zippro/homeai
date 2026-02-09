@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from app.time_utils import utc_now
 
 from sqlalchemy import desc, select
 
@@ -31,6 +32,7 @@ _DEFAULT_PLANS: dict[str, PlanConfig] = {
         monthly_price_usd=14.99,
         ios_product_id="pro_monthly_ios",
         android_product_id="pro_monthly_android",
+        web_product_id="pro_monthly_web",
         features=["higher_limits", "priority_queue", "no_ads"],
     ),
 }
@@ -80,6 +82,14 @@ def list_plans() -> list[PlanConfig]:
         return [PlanConfig.model_validate(row.payload_json) for row in rows]
 
 
+def get_plan(plan_id: str) -> PlanConfig | None:
+    with session_scope() as session:
+        model = session.get(PlanModel, plan_id)
+        if not model:
+            return None
+        return PlanConfig.model_validate(model.payload_json)
+
+
 def upsert_plan(plan_id: str, payload: PlanUpsertRequest, action: AdminActionRequest) -> PlanConfig:
     plan = PlanConfig(plan_id=plan_id, **payload.model_dump())
 
@@ -88,14 +98,14 @@ def upsert_plan(plan_id: str, payload: PlanUpsertRequest, action: AdminActionReq
         if existing:
             existing.payload_json = plan.model_dump(mode="json")
             existing.is_active = plan.is_active
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = utc_now()
         else:
             session.add(
                 PlanModel(
                     plan_id=plan_id,
                     payload_json=plan.model_dump(mode="json"),
                     is_active=plan.is_active,
-                    updated_at=datetime.utcnow(),
+                    updated_at=utc_now(),
                 )
             )
 
@@ -153,14 +163,14 @@ def upsert_variable(key: str, payload: VariableUpsertRequest, action: AdminActio
         if existing:
             existing.value_json = payload.value
             existing.description = payload.description
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = utc_now()
         else:
             session.add(
                 VariableModel(
                     key=key,
                     value_json=payload.value,
                     description=payload.description,
-                    updated_at=datetime.utcnow(),
+                    updated_at=utc_now(),
                 )
             )
 

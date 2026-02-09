@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from app.time_utils import utc_now
 
 from sqlalchemy import select
 
@@ -23,7 +24,7 @@ def bootstrap_credit_reset_schedule() -> None:
         if schedule:
             return
 
-        now = datetime.utcnow()
+        now = utc_now()
         schedule = CreditResetScheduleModel(
             id=_SCHEDULE_ID,
             enabled=True,
@@ -59,14 +60,14 @@ def update_credit_reset_schedule(payload: CreditResetScheduleUpdateRequest) -> C
         if "pro_daily_credits" in update_data:
             schedule.pro_daily_credits = int(update_data["pro_daily_credits"])
 
-        schedule.next_run_at = _compute_next_run(schedule.reset_hour_utc, schedule.reset_minute_utc, datetime.utcnow())
-        schedule.updated_at = datetime.utcnow()
+        schedule.next_run_at = _compute_next_run(schedule.reset_hour_utc, schedule.reset_minute_utc, utc_now())
+        schedule.updated_at = utc_now()
 
         return _to_schema(schedule)
 
 
 def run_daily_credit_reset(dry_run: bool = False, run_at: datetime | None = None) -> CreditResetRunResponse:
-    started_at = run_at or datetime.utcnow()
+    started_at = run_at or utc_now()
 
     with session_scope() as session:
         schedule = _get_or_create_schedule(session)
@@ -110,7 +111,7 @@ def run_daily_credit_reset(dry_run: bool = False, run_at: datetime | None = None
                 continue
 
             balance_model.balance = target_balance
-            balance_model.updated_at = datetime.utcnow()
+            balance_model.updated_at = utc_now()
 
             session.add(
                 CreditLedgerEntryModel(
@@ -128,9 +129,9 @@ def run_daily_credit_reset(dry_run: bool = False, run_at: datetime | None = None
         if not dry_run:
             schedule.last_run_at = started_at
             schedule.next_run_at = _compute_next_run(schedule.reset_hour_utc, schedule.reset_minute_utc, started_at)
-            schedule.updated_at = datetime.utcnow()
+            schedule.updated_at = utc_now()
 
-    completed_at = datetime.utcnow()
+    completed_at = utc_now()
     return CreditResetRunResponse(
         started_at=started_at,
         completed_at=completed_at,
@@ -141,7 +142,7 @@ def run_daily_credit_reset(dry_run: bool = False, run_at: datetime | None = None
 
 
 def tick_daily_credit_reset() -> CreditResetTickResponse:
-    checked_at = datetime.utcnow()
+    checked_at = utc_now()
 
     with session_scope() as session:
         schedule = _get_or_create_schedule(session)
@@ -195,7 +196,7 @@ def _get_or_create_schedule(session) -> CreditResetScheduleModel:
     if schedule:
         return schedule
 
-    now = datetime.utcnow()
+    now = utc_now()
     schedule = CreditResetScheduleModel(
         id=_SCHEDULE_ID,
         enabled=True,

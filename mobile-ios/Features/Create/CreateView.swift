@@ -6,19 +6,19 @@ final class CreateViewModel: ObservableObject {
     @Published var projects: [BoardProject] = []
     @Published var errorMessage: String?
 
-    private let client: APIClient
-    private let userId: String
+    private let session: AppSession
 
-    init(client: APIClient, userId: String = "ios_user_demo") {
-        self.client = client
-        self.userId = userId
+    init(session: AppSession) {
+        self.session = session
     }
 
     func loadBoard() async {
         isLoading = true
         errorMessage = nil
         do {
-            let board = try await client.fetchUserBoard(userId: userId)
+            let userId = session.userId
+            try await session.client.ensureSession(userId: userId)
+            let board = try await session.client.fetchUserBoard(userId: userId)
             projects = board.projects
         } catch {
             errorMessage = "Failed to load your board."
@@ -28,9 +28,13 @@ final class CreateViewModel: ObservableObject {
 }
 
 struct CreateHomeView: View {
-    @StateObject private var viewModel = CreateViewModel(
-        client: APIClient(baseURL: URL(string: "http://localhost:8000")!)
-    )
+    @ObservedObject var session: AppSession
+    @StateObject private var viewModel: CreateViewModel
+
+    init(session: AppSession) {
+        self.session = session
+        _viewModel = StateObject(wrappedValue: CreateViewModel(session: session))
+    }
 
     var body: some View {
         NavigationStack {
@@ -98,7 +102,7 @@ struct CreateHomeView: View {
                 }
             }
             .navigationTitle("Create")
-            .task {
+            .task(id: session.userId) {
                 await viewModel.loadBoard()
             }
         }

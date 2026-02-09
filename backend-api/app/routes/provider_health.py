@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.auth import require_admin_access
 from app.provider_health_store import get_provider_health
 
-router = APIRouter(prefix="/v1/admin", tags=["admin", "health"])
+router = APIRouter(prefix="/v1/admin", tags=["admin", "health"], dependencies=[Depends(require_admin_access)])
 
 
 @router.get("/providers/health", response_model=dict[str, dict[str, float | int]])

@@ -1,0 +1,9 @@
+{
+  "name": "homeai-web-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "check": "node --check app.js",
+    "build": "rm -rf dist && mkdir -p dist && cp index.html app.js styles.css README.md dist/"
+  }
+}

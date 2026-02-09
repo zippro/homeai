@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "check": "node --check app.js",
+    "build": "rm -rf dist && mkdir -p dist && cp index.html app.js styles.css README.md vercel.json dist/"
+  },
+  "dependencies": {
+    "vercel": "^50.13.2"
+  }
+}

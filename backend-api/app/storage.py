@@ -4,6 +4,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from app.time_utils import utc_now
 from io import BytesIO
 from uuid import uuid4
 
@@ -80,7 +81,7 @@ class StorageUploader:
         return self._client
 
     def _build_object_key(self, key_prefix: str) -> str:
-        timestamp = datetime.utcnow().strftime("%Y%m%d/%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d/%H%M%S")
         return f"{key_prefix}/{timestamp}_{uuid4().hex}.png"
 
     def _build_public_url(self, key: str) -> str:

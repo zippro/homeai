@@ -2,3 +2,15 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
+node_modules/
+**/node_modules/
+admin-dashboard/.vercel/
+backend-api/.pytest_cache/
+backend-api/.mypy_cache/
+**/local.properties
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+.gradle-home/
+mobile-ios/HomeAI.xcodeproj/
+backend-api/app.db

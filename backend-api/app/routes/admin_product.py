@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.auth import require_admin_access
 from app.product_store import (
     delete_plan,
     delete_variable,
@@ -13,7 +14,7 @@ from app.product_store import (
 )
 from app.schemas import AdminActionRequest, AppVariable, AuditLogEntry, PlanConfig, PlanUpsertRequest, VariableUpsertRequest
 
-router = APIRouter(prefix="/v1/admin", tags=["admin"])
+router = APIRouter(prefix="/v1/admin", tags=["admin"], dependencies=[Depends(require_admin_access)])
 
 
 @router.get("/plans", response_model=list[PlanConfig])

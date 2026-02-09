@@ -18,22 +18,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.homeai.network.ApiClient
 import com.homeai.network.BoardProject
+import com.homeai.ui.SessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 fun CreateScreen() {
-    val apiClient = remember { ApiClient() }
+    val apiClient = remember { SessionStore.apiClient }
+    val currentUserId = SessionStore.userId
     var isLoading by remember { mutableStateOf(true) }
     var projects by remember { mutableStateOf<List<BoardProject>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentUserId) {
+        isLoading = true
         runCatching {
             withContext(Dispatchers.IO) {
-                apiClient.fetchUserBoard("android_user_demo")
+                apiClient.fetchUserBoard(currentUserId)
             }
         }.onSuccess { board ->
             projects = board.projects
@@ -50,6 +52,7 @@ fun CreateScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Your Board")
+        Text("User: $currentUserId")
 
         when {
             isLoading -> CircularProgressIndicator()

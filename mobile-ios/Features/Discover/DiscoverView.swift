@@ -8,17 +8,18 @@ final class DiscoverViewModel: ObservableObject {
     @Published var sections: [DiscoverSection] = []
     @Published var errorMessage: String?
 
-    private let client: APIClient
+    private let session: AppSession
 
-    init(client: APIClient) {
-        self.client = client
+    init(session: AppSession) {
+        self.session = session
     }
 
     func loadFeed() async {
         isLoading = true
         errorMessage = nil
         do {
-            let feed = try await client.fetchDiscoverFeed()
+            try await session.client.ensureSession(userId: session.userId)
+            let feed = try await session.client.fetchDiscoverFeed()
             tabs = feed.tabs
             selectedTab = feed.tabs.first ?? ""
             sections = feed.sections
@@ -32,7 +33,8 @@ final class DiscoverViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            let feed = try await client.fetchDiscoverFeed(tab: tab)
+            try await session.client.ensureSession(userId: session.userId)
+            let feed = try await session.client.fetchDiscoverFeed(tab: tab)
             tabs = feed.tabs
             selectedTab = tab
             sections = feed.sections
@@ -44,9 +46,13 @@ final class DiscoverViewModel: ObservableObject {
 }
 
 struct DiscoverHomeView: View {
-    @StateObject private var viewModel = DiscoverViewModel(
-        client: APIClient(baseURL: URL(string: "http://localhost:8000")!)
-    )
+    @ObservedObject var session: AppSession
+    @StateObject private var viewModel: DiscoverViewModel
+
+    init(session: AppSession) {
+        self.session = session
+        _viewModel = StateObject(wrappedValue: DiscoverViewModel(session: session))
+    }
 
     var body: some View {
         NavigationStack {
@@ -124,7 +130,7 @@ struct DiscoverHomeView: View {
                 }
             }
             .navigationTitle("Discover")
-            .task {
+            .task(id: session.userId) {
                 await viewModel.loadFeed()
             }
         }

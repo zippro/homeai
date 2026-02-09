@@ -1,0 +1,56 @@
+name: Web Admin Quality
+
+on:
+  push:
+    paths:
+      - "web-app/**"
+      - "admin-dashboard/**"
+      - ".github/workflows/web-admin-quality.yml"
+  pull_request:
+    paths:
+      - "web-app/**"
+      - "admin-dashboard/**"
+      - ".github/workflows/web-admin-quality.yml"
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate web app JavaScript syntax
+        run: |
+          cd web-app
+          npm run check
+
+      - name: Build web app static bundle
+        run: |
+          cd web-app
+          npm run build
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/styles.css
+
+      - name: Install admin dashboard deps
+        run: |
+          cd admin-dashboard
+          npm ci
+
+      - name: Validate admin dashboard JavaScript syntax
+        run: |
+          cd admin-dashboard
+          npm run check
+
+      - name: Build admin dashboard static bundle
+        run: |
+          cd admin-dashboard
+          npm run build
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/styles.css

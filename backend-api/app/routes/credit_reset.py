@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.auth import require_admin_access
 from app.credit_reset_store import (
     get_credit_reset_schedule,
     run_daily_credit_reset,
@@ -15,7 +16,11 @@ from app.schemas import (
     CreditResetTickResponse,
 )
 
-router = APIRouter(prefix="/v1/admin/credits", tags=["admin", "credits"])
+router = APIRouter(
+    prefix="/v1/admin/credits",
+    tags=["admin", "credits"],
+    dependencies=[Depends(require_admin_access)],
+)
 
 
 @router.get("/reset-schedule", response_model=CreditResetScheduleResponse)

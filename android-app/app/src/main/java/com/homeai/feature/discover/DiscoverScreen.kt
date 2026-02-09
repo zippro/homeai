@@ -18,22 +18,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.homeai.network.ApiClient
 import com.homeai.network.DiscoverSection
+import com.homeai.ui.SessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 fun DiscoverScreen() {
-    val apiClient = remember { ApiClient() }
+    val apiClient = remember { SessionStore.apiClient }
+    val currentUserId = SessionStore.userId
     var isLoading by remember { mutableStateOf(true) }
     var sections by remember { mutableStateOf<List<DiscoverSection>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentUserId) {
+        isLoading = true
         runCatching {
             withContext(Dispatchers.IO) {
-                apiClient.fetchDiscoverFeed(tab = "Home")
+                apiClient.fetchDiscoverFeed(userId = currentUserId, tab = "Home")
             }
         }.onSuccess { feed ->
             sections = feed.sections
@@ -50,6 +52,7 @@ fun DiscoverScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Discover")
+        Text("User: $currentUserId")
 
         when {
             isLoading -> CircularProgressIndicator()

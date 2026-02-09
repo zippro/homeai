@@ -1,0 +1,55 @@
+name: Backend Quality
+
+on:
+  push:
+    paths:
+      - "backend-api/**"
+      - ".github/workflows/backend-quality.yml"
+  pull_request:
+    paths:
+      - "backend-api/**"
+      - ".github/workflows/backend-quality.yml"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run quality checks
+        run: make quality
+
+      - name: Start API for smoke tests
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 >/tmp/homeai-api.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run smoke API flows
+        run: |
+          python scripts/smoke_api_flow.py
+          python scripts/smoke_entitlement_reconciliation.py
+          python scripts/run_experiment_guardrails.py --dry-run --hours 24
+          python scripts/run_experiment_automation.py --dry-run --hours 24 --rollout-limit 200
+
+      - name: Dump API logs on failure
+        if: failure()
+        run: cat /tmp/homeai-api.log

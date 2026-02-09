@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from app.time_utils import utc_now
 
 from sqlalchemy import select
 
@@ -38,7 +39,7 @@ def consume_credits(payload: CreditConsumeRequest) -> CreditOperationResponse:
             raise ValueError("insufficient_credits")
 
         balance_model.balance -= payload.amount
-        balance_model.updated_at = datetime.utcnow()
+        balance_model.updated_at = utc_now()
 
         session.add(
             CreditLedgerEntryModel(
@@ -75,7 +76,7 @@ def grant_credits(payload: CreditGrantRequest) -> CreditOperationResponse:
             session.add(balance_model)
 
         balance_model.balance += payload.amount
-        balance_model.updated_at = datetime.utcnow()
+        balance_model.updated_at = utc_now()
 
         session.add(
             CreditLedgerEntryModel(

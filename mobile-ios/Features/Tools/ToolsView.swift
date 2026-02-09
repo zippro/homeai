@@ -10,10 +10,10 @@ final class ToolsViewModel: ObservableObject {
     @Published var lastJob: RenderJobResponse?
     @Published var errorMessage: String?
 
-    private let client: APIClient
+    private let session: AppSession
 
-    init(client: APIClient) {
-        self.client = client
+    init(session: AppSession) {
+        self.session = session
     }
 
     func generate() async {
@@ -26,8 +26,11 @@ final class ToolsViewModel: ObservableObject {
         errorMessage = nil
 
         do {
+            let userId = session.userId
+            try await session.client.ensureSession(userId: userId)
             let createPayload = RenderJobCreateRequest(
-                userId: "ios_user_demo",
+                userId: userId,
+                platform: "ios",
                 projectId: "mobile_project",
                 imageURL: imageURL,
                 styleId: styleId,
@@ -36,14 +39,14 @@ final class ToolsViewModel: ObservableObject {
                 targetParts: [.fullRoom]
             )
 
-            let created = try await client.createRenderJob(payload: createPayload)
+            let created = try await session.client.createRenderJob(payload: createPayload)
             lastJob = created
 
             // Poll quickly for non-terminal states.
             if created.status == .queued || created.status == .inProgress {
                 for _ in 0..<8 {
                     try await Task.sleep(nanoseconds: 1_500_000_000)
-                    let refreshed = try await client.fetchRenderJob(jobId: created.id)
+                    let refreshed = try await session.client.fetchRenderJob(jobId: created.id)
                     lastJob = refreshed
                     if refreshed.status == .completed || refreshed.status == .failed || refreshed.status == .canceled {
                         break
@@ -59,9 +62,13 @@ final class ToolsViewModel: ObservableObject {
 }
 
 struct ToolsHomeView: View {
-    @StateObject private var viewModel = ToolsViewModel(
-        client: APIClient(baseURL: URL(string: "http://localhost:8000")!)
-    )
+    @ObservedObject var session: AppSession
+    @StateObject private var viewModel: ToolsViewModel
+
+    init(session: AppSession) {
+        self.session = session
+        _viewModel = StateObject(wrappedValue: ToolsViewModel(session: session))
+    }
 
     var body: some View {
         NavigationStack {

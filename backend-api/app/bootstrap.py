@@ -4,9 +4,12 @@ from app.db import Base, engine
 from app.models import (  # noqa: F401
     AdminAuditLogModel,
     AnalyticsEventModel,
+    AuthSessionModel,
     CreditBalanceModel,
     CreditLedgerEntryModel,
     CreditResetScheduleModel,
+    ExperimentAssignmentModel,
+    ExperimentModel,
     PlanModel,
     ProviderSettingsStateModel,
     ProviderSettingsVersionModel,

@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
@@ -21,11 +21,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.homeai.network.ApiClient
 import com.homeai.network.RenderJobCreateRequest
 import com.homeai.network.RenderJobResponse
 import com.homeai.network.RenderOperation
 import com.homeai.network.RenderTier
+import com.homeai.ui.SessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,7 +35,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ToolsScreen() {
     val scope = rememberCoroutineScope()
-    val apiClient = remember { ApiClient() }
+    val apiClient = remember { SessionStore.apiClient }
+    val currentUserId = SessionStore.userId
 
     var imageUrl by remember { mutableStateOf("") }
     var styleId by remember { mutableStateOf("modern_minimal") }
@@ -50,6 +51,7 @@ fun ToolsScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Tools", style = MaterialTheme.typography.headlineMedium)
+        Text("User: $currentUserId")
 
         OutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -91,7 +93,8 @@ fun ToolsScreen() {
                         val created = withContext(Dispatchers.IO) {
                             apiClient.createRenderJob(
                                 RenderJobCreateRequest(
-                                    userId = "android_user_demo",
+                                    userId = currentUserId,
+                                    platform = "android",
                                     projectId = "android_project",
                                     imageUrl = imageUrl,
                                     styleId = styleId,
@@ -174,7 +177,7 @@ private fun OperationDropdown(
             }
         )
 
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             RenderOperation.entries.forEach { operation ->
                 DropdownMenuItem(
                     text = { Text(operation.name) },
@@ -213,7 +216,7 @@ private fun TierDropdown(
             }
         )
 
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             RenderTier.entries.forEach { tier ->
                 DropdownMenuItem(
                     text = { Text(tier.name) },

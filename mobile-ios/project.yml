@@ -1,0 +1,63 @@
+name: HomeAI
+options:
+  bundleIdPrefix: com.homeai
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  HomeAI:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Features
+      - path: Networking
+    resources:
+      - path: App/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.homeai.ios
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+        SWIFT_VERSION: 5.0
+        DEVELOPMENT_TEAM: ""
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Home AI
+        APIBaseURL: http://localhost:8000
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
+            "127.0.0.1":
+              NSExceptionAllowsInsecureHTTPLoads: true
+        UILaunchScreen:
+          UIColorName: ""
+
+  HomeAITests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: HomeAI
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/HomeAI.app/HomeAI"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  HomeAI:
+    build:
+      targets:
+        HomeAI: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - HomeAITests

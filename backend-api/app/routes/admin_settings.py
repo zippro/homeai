@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.auth import require_admin_access
 from app.providers.registry import get_provider_registry
 from app.schemas import (
     AdminActionRequest,
@@ -21,7 +22,7 @@ from app.settings_store import (
     update_provider_settings_draft,
 )
 
-router = APIRouter(prefix="/v1/admin", tags=["admin"])
+router = APIRouter(prefix="/v1/admin", tags=["admin"], dependencies=[Depends(require_admin_access)])
 
 
 @router.get("/provider-settings", response_model=ProviderSettings)

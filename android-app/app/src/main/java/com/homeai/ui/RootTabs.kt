@@ -16,6 +16,18 @@ import com.homeai.feature.create.CreateScreen
 import com.homeai.feature.discover.DiscoverScreen
 import com.homeai.feature.profile.ProfileScreen
 import com.homeai.feature.tools.ToolsScreen
+import com.homeai.network.ApiClient
+
+object SessionStore {
+    private const val defaultUserId = "homeai_demo_user"
+    val apiClient: ApiClient = ApiClient()
+    var userId by mutableStateOf(defaultUserId)
+
+    fun updateUserId(raw: String) {
+        val trimmed = raw.trim()
+        userId = if (trimmed.isBlank()) defaultUserId else trimmed
+    }
+}
 
 private val tabs = listOf("Tools", "Create", "Discover", "My Profile")
 

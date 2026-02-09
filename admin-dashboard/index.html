@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HomeAI Admin Control Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="background-layer"></div>
+    <header class="topbar">
+      <div>
+        <p class="kicker">Dashboard</p>
+        <h1>Admin Control Room</h1>
+        <p class="subtitle">
+          Manage API connection, provider routing, plans, and variables from one panel.
+        </p>
+      </div>
+      <div class="status-stack">
+        <p id="connectionState" class="badge badge-muted">Connection: idle</p>
+        <p class="badge badge-outline">Last sync: <span id="lastSyncValue">never</span></p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card" id="connectionCard">
+        <h2>API Settings</h2>
+        <p class="section-note">
+          Set backend URL and optional auth headers (Bearer and/or X-Admin-Token). Settings are stored in your browser.
+        </p>
+        <div class="grid two-columns">
+          <label>
+            API Base URL
+            <input id="apiBaseUrl" type="url" placeholder="https://api.yourdomain.com" />
+          </label>
+          <label>
+            Bearer Token (optional)
+            <input id="authToken" type="password" placeholder="dev_xxx" />
+          </label>
+          <label>
+            Admin API Token (optional)
+            <input id="adminApiToken" type="password" placeholder="ADMIN_API_TOKEN value" />
+          </label>
+          <label>
+            Actor
+            <input id="adminActor" type="text" placeholder="admin@company.com" />
+          </label>
+          <label>
+            Reason
+            <input id="actionReason" type="text" placeholder="provider rollout" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="saveConnection" type="button" class="btn btn-primary">Save Settings</button>
+          <button id="testConnection" type="button" class="btn">Test Health</button>
+          <button id="refreshAll" type="button" class="btn">Refresh All Data</button>
+        </div>
+      </section>
+
+      <section class="card" id="providerCard">
+        <div class="section-head">
+          <h2>Provider Settings</h2>
+          <p id="providerSourceLabel" class="badge badge-outline">Editor source: none</p>
+        </div>
+        <p class="section-note">
+          Use quick router controls for default/fallback/provider model updates, or edit full JSON directly.
+        </p>
+        <div class="section-head">
+          <h3>Quick Router Controls</h3>
+          <div class="actions no-margin">
+            <button id="syncStructuredFromJson" type="button" class="btn">Load From JSON</button>
+            <button id="applyStructuredToJson" type="button" class="btn">Apply To JSON</button>
+          </div>
+        </div>
+        <div class="grid two-columns">
+          <label>
+            Default Provider
+            <select id="defaultProviderSelect"></select>
+          </label>
+          <label>
+            Fallback Chain (comma separated)
+            <input id="fallbackChainInput" type="text" placeholder="fal,openai,mock" />
+          </label>
+          <div class="full-width">
+            <p class="inline-label">Enabled Providers</p>
+            <div id="enabledProvidersCheckboxes" class="checkbox-grid"></div>
+          </div>
+          <div class="full-width table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Preview Provider</th>
+                  <th>Final Provider</th>
+                </tr>
+              </thead>
+              <tbody id="operationRoutesTableBody"></tbody>
+            </table>
+          </div>
+          <div class="full-width table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Image Part</th>
+                  <th>Preview Provider</th>
+                  <th>Final Provider</th>
+                </tr>
+              </thead>
+              <tbody id="partRoutesTableBody"></tbody>
+            </table>
+          </div>
+          <div class="full-width table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Preview Model</th>
+                  <th>Final Model</th>
+                </tr>
+              </thead>
+              <tbody id="providerModelsTableBody"></tbody>
+            </table>
+          </div>
+          <label>
+            Max Retries
+            <input id="costMaxRetries" type="number" min="0" step="1" value="1" />
+          </label>
+          <label>
+            Max Output Megapixels
+            <input id="costMaxMegapixels" type="number" min="0.1" step="0.1" value="1.2" />
+          </label>
+          <label class="switch full-width">
+            <input id="costPreviewRequired" type="checkbox" checked />
+            <span>Require preview before final</span>
+          </label>
+        </div>
+        <p class="section-note">
+          Save as draft, publish, or rollback to a previous provider settings version.
+        </p>
+        <div class="actions">
+          <button id="loadDraft" type="button" class="btn">Load Draft</button>
+          <button id="loadPublished" type="button" class="btn">Load Published</button>
+          <button id="formatProviderJson" type="button" class="btn">Format JSON</button>
+        </div>
+        <label>
+          Provider Settings JSON
+          <textarea id="providerJsonEditor" rows="16" spellcheck="false"></textarea>
+        </label>
+        <div class="actions">
+          <button id="saveDraft" type="button" class="btn btn-primary">Save Draft</button>
+          <button id="publishDraft" type="button" class="btn btn-accent">Publish Draft</button>
+          <input id="rollbackVersion" type="number" min="1" placeholder="version" class="input-compact" />
+          <button id="rollbackButton" type="button" class="btn btn-danger">Rollback</button>
+        </div>
+        <div class="grid two-columns compact-gap">
+          <div>
+            <h3>Versions</h3>
+            <ul id="versionsList" class="list"></ul>
+          </div>
+          <div>
+            <h3>Provider Audit</h3>
+            <ul id="auditList" class="list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="plansCard">
+        <div class="section-head">
+          <h2>Plans</h2>
+          <button id="refreshPlans" type="button" class="btn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th>Credits/day</th>
+                <th>Preview</th>
+                <th>Final</th>
+                <th>Price</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody id="plansTableBody"></tbody>
+          </table>
+        </div>
+        <form id="planForm" class="grid two-columns">
+          <label>
+            Plan ID
+            <input id="planId" required type="text" placeholder="pro" />
+          </label>
+          <label>
+            Display Name
+            <input id="planDisplayName" required type="text" placeholder="Pro" />
+          </label>
+          <label>
+            Daily Credits
+            <input id="dailyCredits" required type="number" min="0" value="100" />
+          </label>
+          <label>
+            Preview Cost
+            <input id="previewCost" required type="number" min="0" value="1" />
+          </label>
+          <label>
+            Final Cost
+            <input id="finalCost" required type="number" min="0" value="1" />
+          </label>
+          <label>
+            Monthly Price (USD)
+            <input id="monthlyPrice" required type="number" min="0" step="0.01" value="14.99" />
+          </label>
+          <label>
+            iOS Product ID
+            <input id="iosProductId" type="text" placeholder="pro_monthly_ios" />
+          </label>
+          <label>
+            Android Product ID
+            <input id="androidProductId" type="text" placeholder="pro_monthly_android" />
+          </label>
+          <label>
+            Web Product ID
+            <input id="webProductId" type="text" placeholder="pro_monthly_web" />
+          </label>
+          <label class="full-width">
+            Features (comma separated)
+            <input id="featuresCsv" type="text" placeholder="priority_queue, no_ads" />
+          </label>
+          <label class="switch full-width">
+            <input id="planActive" type="checkbox" checked />
+            <span>Plan Active</span>
+          </label>
+          <div class="actions full-width">
+            <button type="submit" class="btn btn-primary">Upsert Plan</button>
+            <input id="deletePlanId" type="text" placeholder="plan_id to delete" class="input-compact" />
+            <button id="deletePlanButton" type="button" class="btn btn-danger">Delete Plan</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" id="variablesCard">
+        <div class="section-head">
+          <h2>Variables</h2>
+          <button id="refreshVariables" type="button" class="btn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="variablesTableBody"></tbody>
+          </table>
+        </div>
+        <form id="variableForm" class="grid two-columns">
+          <label>
+            Variable Key
+            <input id="variableKey" required type="text" placeholder="preview_before_final_required" />
+          </label>
+          <label>
+            Type
+            <select id="variableType">
+              <option value="string">string</option>
+              <option value="number">number</option>
+              <option value="boolean">boolean</option>
+            </select>
+          </label>
+          <label>
+            Value
+            <input id="variableValue" required type="text" placeholder="true" />
+          </label>
+          <label>
+            Description
+            <input id="variableDescription" type="text" placeholder="Feature flag for final renders" />
+          </label>
+          <div class="actions full-width">
+            <button type="submit" class="btn btn-primary">Upsert Variable</button>
+            <input id="deleteVariableKey" type="text" placeholder="variable key to delete" class="input-compact" />
+            <button id="deleteVariableButton" type="button" class="btn btn-danger">Delete Variable</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" id="experimentsCard">
+        <div class="section-head">
+          <h2>Experiments (A/B)</h2>
+          <button id="refreshExperiments" type="button" class="btn">Refresh</button>
+        </div>
+        <p class="section-note">
+          Configure live experiments for pricing and provider strategies. Assignments are sticky by user ID.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Primary Metric</th>
+                <th>Variants</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody id="experimentsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <label class="inline-control">
+            Template
+            <select id="experimentTemplateSelect">
+              <option value="">Select template...</option>
+            </select>
+          </label>
+          <button id="refreshExperimentTemplates" type="button" class="btn">Refresh Templates</button>
+          <button id="applyExperimentTemplate" type="button" class="btn btn-accent">Apply Template to Form</button>
+        </div>
+        <form id="experimentForm" class="grid two-columns">
+          <label>
+            Experiment ID
+            <input id="experimentId" required type="text" placeholder="pricing_paywall_v1" />
+          </label>
+          <label>
+            Name
+            <input id="experimentName" required type="text" placeholder="Paywall Timing" />
+          </label>
+          <label class="full-width">
+            Description
+            <input id="experimentDescription" type="text" placeholder="Show paywall on exhaustion vs after first preview" />
+          </label>
+          <label>
+            Primary Metric
+            <input id="experimentPrimaryMetric" required type="text" value="upgrade_conversion_7d" />
+          </label>
+          <label>
+            Assignment Unit
+            <input id="experimentAssignmentUnit" type="text" value="user_id" />
+          </label>
+          <label class="switch full-width">
+            <input id="experimentActive" type="checkbox" checked />
+            <span>Experiment Active</span>
+          </label>
+          <label class="full-width">
+            Variants JSON
+            <textarea id="experimentVariantsJson" rows="7" spellcheck="false">[
+  {"variant_id":"control","weight":50,"config":{"paywall_mode":"on_exhaustion"}},
+  {"variant_id":"treatment","weight":50,"config":{"paywall_mode":"after_first_preview"}}
+]</textarea>
+          </label>
+          <label class="full-width">
+            Guardrails JSON
+            <textarea id="experimentGuardrailsJson" rows="4" spellcheck="false">{
+  "render_success_rate_min": 85,
+  "p95_latency_max_ms": 12000
+}</textarea>
+          </label>
+          <div class="actions full-width">
+            <button type="submit" class="btn btn-primary">Upsert Experiment</button>
+            <input id="deleteExperimentId" type="text" placeholder="experiment_id to delete" class="input-compact" />
+            <button id="deleteExperimentButton" type="button" class="btn btn-danger">Delete Experiment</button>
+          </div>
+        </form>
+        <div class="section-head">
+          <h3>Guardrail Enforcement</h3>
+        </div>
+        <div class="actions">
+          <label class="inline-control">
+            Window
+            <select id="experimentGuardrailHours">
+              <option value="24">24h</option>
+              <option value="72">72h</option>
+              <option value="168">7d</option>
+            </select>
+          </label>
+          <label class="switch inline-control">
+            <input id="experimentGuardrailDryRun" type="checkbox" checked />
+            <span>Dry Run</span>
+          </label>
+          <button id="runExperimentGuardrails" type="button" class="btn btn-accent">Run Guardrails</button>
+        </div>
+        <pre id="experimentGuardrailResult" class="log-output compact-log">No guardrail runs yet.</pre>
+        <div class="section-head">
+          <h3>Performance Evaluator</h3>
+        </div>
+        <p class="section-note">
+          Compare control and challenger variants with lift, p-value, and rollout recommendation for pricing/provider tests.
+        </p>
+        <div class="actions">
+          <label class="inline-control">
+            Experiment ID
+            <input id="experimentPerformanceId" type="text" placeholder="pricing_paywall_v1" class="input-compact" />
+          </label>
+          <label class="inline-control">
+            Window
+            <select id="experimentPerformanceHours">
+              <option value="24">24h</option>
+              <option value="72">72h</option>
+              <option value="168">7d</option>
+              <option value="720">30d</option>
+            </select>
+          </label>
+          <button id="runExperimentPerformance" type="button" class="btn btn-accent">Evaluate Performance</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Variant</th>
+                <th>Assigned</th>
+                <th>Primary Metric</th>
+                <th>Lift vs Control</th>
+                <th>P-Value</th>
+                <th>Significant</th>
+                <th>Render Success</th>
+                <th>Avg Cost</th>
+                <th>Paid Sources</th>
+              </tr>
+            </thead>
+            <tbody id="experimentPerformanceTableBody"></tbody>
+          </table>
+        </div>
+        <pre id="experimentPerformanceSummary" class="log-output compact-log">No performance evaluation yet.</pre>
+        <div class="section-head">
+          <h3>Trend Explorer</h3>
+        </div>
+        <p class="section-note">
+          Bucketed experiment trends to inspect metric direction over time before full rollout.
+        </p>
+        <div class="actions">
+          <label class="inline-control">
+            Experiment ID
+            <input id="experimentTrendId" type="text" placeholder="pricing_paywall_v1" class="input-compact" />
+          </label>
+          <label class="inline-control">
+            Window
+            <select id="experimentTrendHours">
+              <option value="72">72h</option>
+              <option value="168" selected>7d</option>
+              <option value="336">14d</option>
+              <option value="720">30d</option>
+            </select>
+          </label>
+          <label class="inline-control">
+            Bucket
+            <select id="experimentTrendBucketHours">
+              <option value="6">6h</option>
+              <option value="12">12h</option>
+              <option value="24" selected>24h</option>
+              <option value="48">48h</option>
+            </select>
+          </label>
+          <button id="runExperimentTrend" type="button" class="btn btn-accent">Load Trends</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bucket End (UTC)</th>
+                <th>Variant</th>
+                <th>Assigned</th>
+                <th>Primary Metric</th>
+                <th>Render Success</th>
+                <th>Preview→Final</th>
+                <th>Checkout→Paid</th>
+                <th>Avg Latency (ms)</th>
+                <th>Total Cost</th>
+              </tr>
+            </thead>
+            <tbody id="experimentTrendTableBody"></tbody>
+          </table>
+        </div>
+        <pre id="experimentTrendSummary" class="log-output compact-log">No trend analysis yet.</pre>
+        <div class="chart-wrap">
+          <canvas id="experimentTrendChart" width="1040" height="280"></canvas>
+        </div>
+        <div class="section-head">
+          <h3>Auto Rollout</h3>
+        </div>
+        <p class="section-note">
+          Promote statistically winning variants in safe steps (10% → 50% → 100%) with guardrail checks.
+        </p>
+        <div class="actions">
+          <label class="inline-control">
+            Experiment ID
+            <input id="experimentRolloutId" type="text" placeholder="pricing_paywall_v1" class="input-compact" />
+          </label>
+          <label class="inline-control">
+            Window
+            <select id="experimentRolloutHours">
+              <option value="168">7d</option>
+              <option value="72">72h</option>
+              <option value="24">24h</option>
+              <option value="720">30d</option>
+            </select>
+          </label>
+          <label class="switch inline-control">
+            <input id="experimentRolloutDryRun" type="checkbox" checked />
+            <span>Dry Run</span>
+          </label>
+          <label class="inline-control">
+            Limit
+            <input id="experimentRolloutLimit" type="number" min="1" max="1000" value="200" class="input-compact" />
+          </label>
+          <button id="runExperimentRollout" type="button" class="btn btn-accent">Evaluate Rollout</button>
+          <button id="runExperimentRolloutAll" type="button" class="btn">Evaluate All Active</button>
+        </div>
+        <pre id="experimentRolloutResult" class="log-output compact-log">No rollout evaluation yet.</pre>
+        <div class="section-head">
+          <h3>Automation Runner</h3>
+        </div>
+        <p class="section-note">
+          Execute guardrail checks and bulk rollout evaluation in one run for all active experiments.
+        </p>
+        <div class="actions">
+          <label class="inline-control">
+            Window
+            <select id="experimentAutomationHours">
+              <option value="168">7d</option>
+              <option value="72">72h</option>
+              <option value="24">24h</option>
+              <option value="720">30d</option>
+            </select>
+          </label>
+          <label class="switch inline-control">
+            <input id="experimentAutomationDryRun" type="checkbox" checked />
+            <span>Dry Run</span>
+          </label>
+          <label class="inline-control">
+            Rollout Limit
+            <input id="experimentAutomationLimit" type="number" min="1" max="1000" value="200" class="input-compact" />
+          </label>
+          <button id="runExperimentAutomation" type="button" class="btn btn-accent">Run Automation</button>
+        </div>
+        <pre id="experimentAutomationResult" class="log-output compact-log">No automation run yet.</pre>
+        <div>
+          <h4>Automation History</h4>
+          <ul id="experimentAutomationHistoryList" class="list"></ul>
+        </div>
+        <div>
+          <h3>Experiment Audit</h3>
+          <ul id="experimentAuditList" class="list"></ul>
+        </div>
+      </section>
+
+      <section class="card" id="creditResetCard">
+        <div class="section-head">
+          <h2>Credits Automation</h2>
+          <button id="refreshCreditReset" type="button" class="btn">Refresh</button>
+        </div>
+        <p class="section-note">
+          Control daily credit reset schedule and trigger manual dry-run/live resets.
+        </p>
+        <form id="creditResetForm" class="grid two-columns">
+          <label class="switch full-width">
+            <input id="creditResetEnabled" type="checkbox" />
+            <span>Reset Schedule Enabled</span>
+          </label>
+          <label>
+            Reset Hour UTC
+            <input id="creditResetHour" type="number" min="0" max="23" value="0" />
+          </label>
+          <label>
+            Reset Minute UTC
+            <input id="creditResetMinute" type="number" min="0" max="59" value="0" />
+          </label>
+          <label>
+            Free Daily Credits
+            <input id="creditResetFreeCredits" type="number" min="0" value="3" />
+          </label>
+          <label>
+            Pro Daily Credits
+            <input id="creditResetProCredits" type="number" min="0" value="80" />
+          </label>
+          <label>
+            Last Run At
+            <input id="creditResetLastRun" type="text" readonly />
+          </label>
+          <label>
+            Next Run At
+            <input id="creditResetNextRun" type="text" readonly />
+          </label>
+          <div class="actions full-width">
+            <button id="saveCreditReset" type="submit" class="btn btn-primary">Save Schedule</button>
+            <button id="dryRunCreditReset" type="button" class="btn">Dry Run Reset</button>
+            <button id="runCreditResetNow" type="button" class="btn btn-accent">Run Reset Now</button>
+            <button id="tickCreditReset" type="button" class="btn">Tick Scheduler</button>
+          </div>
+        </form>
+        <pre id="creditResetResult" class="log-output compact-log">No reset actions yet.</pre>
+      </section>
+
+      <section class="card" id="healthCard">
+        <div class="section-head">
+          <h2>Provider Health (24h)</h2>
+          <button id="refreshHealth" type="button" class="btn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Events</th>
+                <th>Success Rate</th>
+                <th>Failed</th>
+                <th>Avg Latency (ms)</th>
+                <th>Health Score</th>
+              </tr>
+            </thead>
+            <tbody id="providerHealthTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" id="analyticsCard">
+        <div class="section-head">
+          <h2>Analytics Overview</h2>
+          <div class="actions no-margin">
+            <label class="inline-control">
+              Window
+              <select id="analyticsWindowHours">
+                <option value="24">24h</option>
+                <option value="72">72h</option>
+                <option value="168">7d</option>
+                <option value="720">30d</option>
+              </select>
+            </label>
+            <button id="refreshAnalytics" type="button" class="btn">Refresh</button>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <article class="kpi-tile">
+            <p>Total Events</p>
+            <strong id="metricTotalEvents">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Render Success Rate</p>
+            <strong id="metricRenderSuccessRate">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Avg Latency</p>
+            <strong id="metricAvgLatency">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>P95 Latency</p>
+            <strong id="metricP95Latency">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Total Cost (USD)</p>
+            <strong id="metricTotalCost">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Render Success Count</p>
+            <strong id="metricRenderSuccessCount">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Render Failed</p>
+            <strong id="metricRenderFailedCount">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Avg Cost / Render</p>
+            <strong id="metricAvgCostPerRender">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Preview -> Final</p>
+            <strong id="metricPreviewToFinal">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Active Users</p>
+            <strong id="metricActiveUsers">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Checkout Starts</p>
+            <strong id="metricCheckoutStarts">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Paid Activations</p>
+            <strong id="metricPaidActivations">-</strong>
+          </article>
+          <article class="kpi-tile">
+            <p>Checkout -> Paid</p>
+            <strong id="metricCheckoutToPaidRate">-</strong>
+          </article>
+        </div>
+        <div class="grid three-columns compact-gap">
+          <article class="mini-card">
+            <h3>Credits</h3>
+            <p>Consumed: <strong id="metricCreditsConsumed">-</strong></p>
+            <p>Granted: <strong id="metricCreditsGranted">-</strong></p>
+            <p>Refunded: <strong id="metricCreditsRefunded">-</strong></p>
+            <p>Daily Reset: <strong id="metricCreditsDailyReset">-</strong></p>
+            <p>Consumers: <strong id="metricCreditsConsumers">-</strong></p>
+          </article>
+          <article class="mini-card">
+            <h3>Subscriptions</h3>
+            <p>Active: <strong id="metricSubscriptionsActive">-</strong></p>
+            <p>Renewals 7d: <strong id="metricSubscriptionsRenewals7d">-</strong></p>
+            <p>Expiring 7d: <strong id="metricSubscriptionsExpiring7d">-</strong></p>
+          </article>
+          <article class="mini-card">
+            <h3>Queue</h3>
+            <p>Queued: <strong id="metricQueueQueued">-</strong></p>
+            <p>In Progress: <strong id="metricQueueInProgress">-</strong></p>
+            <p>Completed (Window): <strong id="metricQueueCompletedWindow">-</strong></p>
+            <p>Failed (Window): <strong id="metricQueueFailedWindow">-</strong></p>
+            <p>Canceled (Window): <strong id="metricQueueCanceledWindow">-</strong></p>
+          </article>
+          <article class="mini-card">
+            <h3>Funnel</h3>
+            <p>Login Users: <strong id="metricFunnelLoginUsers">-</strong></p>
+            <p>Preview Users: <strong id="metricFunnelPreviewUsers">-</strong></p>
+            <p>Final Users: <strong id="metricFunnelFinalUsers">-</strong></p>
+            <p>Checkout Starts: <strong id="metricFunnelCheckoutStarts">-</strong></p>
+            <p>Paid Activations: <strong id="metricFunnelPaidActivations">-</strong></p>
+          </article>
+        </div>
+        <div class="grid two-columns compact-gap">
+          <div>
+            <h3>Alerts</h3>
+            <ul id="analyticsAlertsList" class="list"></ul>
+          </div>
+          <div>
+            <h3>Status Breakdown</h3>
+            <ul id="analyticsStatusList" class="list"></ul>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Render Events</th>
+                <th>Success Rate</th>
+                <th>P95 Latency</th>
+                <th>Total Cost</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsProviderTableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Operation</th>
+                <th>Render Events</th>
+                <th>Success Rate</th>
+                <th>Avg Latency</th>
+                <th>Avg Cost</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsOperationTableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Platform</th>
+                <th>Total Events</th>
+                <th>Render Events</th>
+                <th>Render Success Rate</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsPlatformTableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Subscription Source</th>
+                <th>Active Subscriptions</th>
+                <th>Share</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsSubscriptionSourceTableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Experiment</th>
+                <th>Primary Metric</th>
+                <th>Assigned Users</th>
+                <th>Active Paid Users</th>
+                <th>Paid Conversion</th>
+                <th>Variant Performance</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsExperimentTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" id="productAuditCard">
+        <div class="section-head">
+          <h2>Product Audit</h2>
+          <button id="refreshProductAudit" type="button" class="btn">Refresh</button>
+        </div>
+        <ul id="productAuditList" class="list"></ul>
+      </section>
+
+      <section class="card" id="logCard">
+        <h2>Activity Log</h2>
+        <pre id="activityLog" class="log-output">Waiting for actions...</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

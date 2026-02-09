@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from app.time_utils import utc_now
 
 from sqlalchemy import desc, func, select
 
@@ -55,13 +56,13 @@ def upsert_user_project(user_id: str, project_id: str, cover_image_url: str | No
     with session_scope() as session:
         model = session.get(UserProjectModel, project_id)
         if not model:
-            model = UserProjectModel(project_id=project_id, user_id=user_id, created_at=datetime.utcnow())
+            model = UserProjectModel(project_id=project_id, user_id=user_id, created_at=utc_now())
             session.add(model)
 
         model.user_id = user_id
         if cover_image_url:
             model.cover_image_url = cover_image_url
-        model.updated_at = datetime.utcnow()
+        model.updated_at = utc_now()
 
 
 def get_user_board(user_id: str, limit: int = 30) -> UserBoardResponse:
@@ -105,6 +106,22 @@ def get_user_board(user_id: str, limit: int = 30) -> UserBoardResponse:
         return UserBoardResponse(user_id=user_id, projects=projects)
 
 
+def has_completed_preview(project_id: str, style_id: str) -> bool:
+    with session_scope() as session:
+        stmt = (
+            select(RenderJobModel.id)
+            .where(
+                RenderJobModel.project_id == project_id,
+                RenderJobModel.style_id == style_id,
+                RenderJobModel.tier == RenderTier.preview.value,
+                RenderJobModel.status == JobStatus.completed.value,
+            )
+            .limit(1)
+        )
+        found = session.execute(stmt).scalar_one_or_none()
+        return found is not None
+
+
 def update_render_job_status(
     job_id: str,
     *,
@@ -124,7 +141,7 @@ def update_render_job_status(
         if error_code is not None:
             model.error_code = error_code
 
-        model.updated_at = datetime.utcnow()
+        model.updated_at = utc_now()
         session.flush()
         session.refresh(model)
         return _to_schema(model)

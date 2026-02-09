@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from app.time_utils import utc_now
 
 from sqlalchemy import desc, select
 
@@ -41,7 +42,7 @@ def bootstrap_provider_settings() -> None:
                 reason="initial_bootstrap",
                 source_version=None,
                 settings_json=initial_json,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
         )
 
@@ -86,7 +87,7 @@ def update_provider_settings_draft(
 
         _validate_settings(updated, available_providers)
         state.draft_json = updated.model_dump(mode="json")
-        state.updated_at = datetime.utcnow()
+        state.updated_at = utc_now()
 
         _append_audit(
             session=session,
@@ -116,7 +117,7 @@ def publish_provider_settings(
 
         state.published_json = payload_json
         state.current_version = new_version
-        state.updated_at = datetime.utcnow()
+        state.updated_at = utc_now()
 
         session.add(
             ProviderSettingsVersionModel(
@@ -125,7 +126,7 @@ def publish_provider_settings(
                 reason=action.reason,
                 source_version=source_version,
                 settings_json=payload_json,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
         )
 
@@ -143,7 +144,7 @@ def publish_provider_settings(
             version=new_version,
             actor=action.actor,
             reason=action.reason,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
 
@@ -168,7 +169,7 @@ def rollback_provider_settings(
         state.published_json = payload_json
         state.draft_json = payload_json
         state.current_version = new_version
-        state.updated_at = datetime.utcnow()
+        state.updated_at = utc_now()
 
         session.add(
             ProviderSettingsVersionModel(
@@ -177,7 +178,7 @@ def rollback_provider_settings(
                 reason=action.reason or f"rollback_from_{version}",
                 source_version=version,
                 settings_json=payload_json,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
         )
 
@@ -195,7 +196,7 @@ def rollback_provider_settings(
             version=new_version,
             actor=action.actor,
             reason=action.reason or f"rollback_from_{version}",
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
 
@@ -251,7 +252,7 @@ def _get_or_create_state(session) -> ProviderSettingsStateModel:
                 reason="autocreated_state",
                 source_version=None,
                 settings_json=initial_json,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
         )
     return state
