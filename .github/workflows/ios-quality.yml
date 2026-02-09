@@ -25,11 +25,45 @@ jobs:
           cd mobile-ios
           xcodegen generate
 
-      - name: Build for iOS simulator
+      - name: Resolve concrete simulator destination
+        id: destination
+        run: |
+          DESTINATION_ID=$(xcodebuild -project mobile-ios/HomeAI.xcodeproj -scheme HomeAI -showdestinations 2>/dev/null | awk '
+            /platform:iOS Simulator/ && /id:/ && /name:/ && $0 !~ /Any iOS Simulator Device/ && $0 !~ /dvtdevice/ {
+              n=split($0, parts, ",");
+              for (i=1; i<=n; i++) {
+                gsub(/^[[:space:]\{]+|[[:space:]\}]+$/, "", parts[i]);
+                if (parts[i] ~ /^id:/) {
+                  sub(/^id:/, "", parts[i]);
+                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", parts[i]);
+                  print parts[i];
+                  exit;
+                }
+              }
+            }
+          ')
+          if [ -z "${DESTINATION_ID}" ]; then
+            echo "No concrete iOS simulator destination found."
+            xcodebuild -project mobile-ios/HomeAI.xcodeproj -scheme HomeAI -showdestinations
+            exit 1
+          fi
+          echo "destination_id=${DESTINATION_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Build for iOS simulator (build-for-testing)
         run: |
           xcodebuild -project mobile-ios/HomeAI.xcodeproj \
             -scheme HomeAI \
             -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "id=${{ steps.destination.outputs.destination_id }}" \
             CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath /tmp/HomeAIDerived \
             build-for-testing
+
+      - name: Run iOS unit tests
+        run: |
+          xcodebuild -project mobile-ios/HomeAI.xcodeproj \
+            -scheme HomeAI \
+            -configuration Debug \
+            -destination "id=${{ steps.destination.outputs.destination_id }}" \
+            -derivedDataPath /tmp/HomeAIDerived \
+            test-without-building
