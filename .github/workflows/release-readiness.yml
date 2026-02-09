@@ -141,7 +141,23 @@ jobs:
             }
           ')
           if [ -z "${DESTINATION_ID}" ]; then
-            echo "No concrete iOS simulator destination found."
+            DESTINATION_ID=$(xcodebuild -project mobile-ios/HomeAI.xcodeproj -scheme HomeAI -showdestinations 2>/dev/null | awk '
+              /platform:macOS/ && /id:/ && /name:/ {
+                n=split($0, parts, ",");
+                for (i=1; i<=n; i++) {
+                  gsub(/^[[:space:]\{]+|[[:space:]\}]+$/, "", parts[i]);
+                  if (parts[i] ~ /^id:/) {
+                    sub(/^id:/, "", parts[i]);
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", parts[i]);
+                    print parts[i];
+                    exit;
+                  }
+                }
+              }
+            ')
+          fi
+          if [ -z "${DESTINATION_ID}" ]; then
+            echo "No concrete iOS simulator or macOS Designed-for-iPad/iPhone destination found."
             xcodebuild -project mobile-ios/HomeAI.xcodeproj -scheme HomeAI -showdestinations
             exit 1
           fi
