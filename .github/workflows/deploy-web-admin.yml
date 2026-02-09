@@ -1,6 +1,13 @@
 name: Deploy Web and Admin
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "web-app/**"
+      - "admin-dashboard/**"
+      - ".github/workflows/deploy-web-admin.yml"
   workflow_dispatch:
     inputs:
       deploy_target:
@@ -20,7 +27,7 @@ on:
 
 jobs:
   deploy-web:
-    if: ${{ inputs.deploy_target == 'web' || inputs.deploy_target == 'both' }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_target == 'web' || inputs.deploy_target == 'both' }}
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -45,7 +52,7 @@ jobs:
         run: |
           npm install --global vercel@latest
           cd web-app
-          if [ "${{ inputs.production }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.production }}" = "true" ]; then
             vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
             vercel build --prod --token "${VERCEL_TOKEN}"
             vercel deploy --prebuilt --prod --token "${VERCEL_TOKEN}"
@@ -56,7 +63,7 @@ jobs:
           fi
 
   deploy-admin:
-    if: ${{ inputs.deploy_target == 'admin' || inputs.deploy_target == 'both' }}
+    if: ${{ github.event_name == 'push' || inputs.deploy_target == 'admin' || inputs.deploy_target == 'both' }}
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -82,7 +89,7 @@ jobs:
         run: |
           npm install --global vercel@latest
           cd admin-dashboard
-          if [ "${{ inputs.production }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.production }}" = "true" ]; then
             vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
             vercel build --prod --token "${VERCEL_TOKEN}"
             vercel deploy --prebuilt --prod --token "${VERCEL_TOKEN}"
