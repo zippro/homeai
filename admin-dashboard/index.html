@@ -28,8 +28,46 @@
       </div>
     </header>
 
-    <main class="layout">
-      <section class="card" id="connectionCard">
+    <div class="workspace">
+      <aside class="sidebar card">
+        <div class="sidebar-head">
+          <h2>Navigation</h2>
+          <p class="section-note">Use groups and search to focus only on the section you are working on.</p>
+        </div>
+        <label class="full-width">
+          Find Section
+          <input id="sectionSearch" type="text" placeholder="search settings, experiments, analytics..." />
+        </label>
+        <div class="group-filter">
+          <button type="button" class="chip active" data-group-filter="all">All</button>
+          <button type="button" class="chip" data-group-filter="overview">Overview</button>
+          <button type="button" class="chip" data-group-filter="setup">Setup</button>
+          <button type="button" class="chip" data-group-filter="ai">AI Routing</button>
+          <button type="button" class="chip" data-group-filter="monetization">Monetization</button>
+          <button type="button" class="chip" data-group-filter="experiments">Experiments</button>
+          <button type="button" class="chip" data-group-filter="reliability">Reliability</button>
+          <button type="button" class="chip" data-group-filter="audit">Audit</button>
+        </div>
+        <nav id="sectionNav" class="section-nav">
+          <button type="button" class="section-nav-link" data-nav-target="analyticsCard">Analytics Overview</button>
+          <button type="button" class="section-nav-link" data-nav-target="connectionCard">API Settings</button>
+          <button type="button" class="section-nav-link" data-nav-target="providerCard">Provider Settings</button>
+          <button type="button" class="section-nav-link" data-nav-target="plansCard">Plans</button>
+          <button type="button" class="section-nav-link" data-nav-target="variablesCard">Variables</button>
+          <button type="button" class="section-nav-link" data-nav-target="experimentsCard">Experiments</button>
+          <button type="button" class="section-nav-link" data-nav-target="creditResetCard">Credits Automation</button>
+          <button type="button" class="section-nav-link" data-nav-target="healthCard">Provider Health</button>
+          <button type="button" class="section-nav-link" data-nav-target="productAuditCard">Product Audit</button>
+          <button type="button" class="section-nav-link" data-nav-target="logCard">Activity Log</button>
+        </nav>
+        <div class="actions full-width">
+          <button id="refreshVisible" type="button" class="btn btn-primary">Refresh Visible</button>
+          <button id="clearSectionFilters" type="button" class="btn">Clear Filters</button>
+        </div>
+      </aside>
+
+      <main class="layout" id="dashboardLayout">
+      <section class="card dashboard-section" id="connectionCard" data-section-title="API Settings" data-group="setup">
         <h2>API Settings</h2>
         <p class="section-note">
           Set backend URL and optional auth headers (Bearer and/or X-Admin-Token). Settings are stored in your browser.
@@ -63,7 +101,7 @@
         </div>
       </section>
 
-      <section class="card" id="providerCard">
+      <section class="card dashboard-section" id="providerCard" data-section-title="Provider Settings" data-group="ai">
         <div class="section-head">
           <h2>Provider Settings</h2>
           <p id="providerSourceLabel" class="badge badge-outline">Editor source: none</p>
@@ -170,7 +208,7 @@
         </div>
       </section>
 
-      <section class="card" id="plansCard">
+      <section class="card dashboard-section" id="plansCard" data-section-title="Plans" data-group="monetization">
         <div class="section-head">
           <h2>Plans</h2>
           <button id="refreshPlans" type="button" class="btn">Refresh</button>
@@ -243,7 +281,7 @@
         </form>
       </section>
 
-      <section class="card" id="variablesCard">
+      <section class="card dashboard-section" id="variablesCard" data-section-title="Variables" data-group="monetization">
         <div class="section-head">
           <h2>Variables</h2>
           <button id="refreshVariables" type="button" class="btn">Refresh</button>
@@ -289,7 +327,7 @@
         </form>
       </section>
 
-      <section class="card" id="experimentsCard">
+      <section class="card dashboard-section" id="experimentsCard" data-section-title="Experiments (A/B)" data-group="experiments">
         <div class="section-head">
           <h2>Experiments (A/B)</h2>
           <button id="refreshExperiments" type="button" class="btn">Refresh</button>
@@ -548,7 +586,7 @@
         </div>
       </section>
 
-      <section class="card" id="creditResetCard">
+      <section class="card dashboard-section" id="creditResetCard" data-section-title="Credits Automation" data-group="reliability">
         <div class="section-head">
           <h2>Credits Automation</h2>
           <button id="refreshCreditReset" type="button" class="btn">Refresh</button>
@@ -595,7 +633,7 @@
         <pre id="creditResetResult" class="log-output compact-log">No reset actions yet.</pre>
       </section>
 
-      <section class="card" id="healthCard">
+      <section class="card dashboard-section" id="healthCard" data-section-title="Provider Health (24h)" data-group="reliability">
         <div class="section-head">
           <h2>Provider Health (24h)</h2>
           <button id="refreshHealth" type="button" class="btn">Refresh</button>
@@ -617,7 +655,7 @@
         </div>
       </section>
 
-      <section class="card" id="analyticsCard">
+      <section class="card dashboard-section" id="analyticsCard" data-section-title="Analytics Overview" data-group="overview">
         <div class="section-head">
           <h2>Analytics Overview</h2>
           <div class="actions no-margin">
@@ -799,7 +837,7 @@
         </div>
       </section>
 
-      <section class="card" id="productAuditCard">
+      <section class="card dashboard-section" id="productAuditCard" data-section-title="Product Audit" data-group="audit">
         <div class="section-head">
           <h2>Product Audit</h2>
           <button id="refreshProductAudit" type="button" class="btn">Refresh</button>
@@ -807,11 +845,12 @@
         <ul id="productAuditList" class="list"></ul>
       </section>
 
-      <section class="card" id="logCard">
+      <section class="card dashboard-section" id="logCard" data-section-title="Activity Log" data-group="audit">
         <h2>Activity Log</h2>
         <pre id="activityLog" class="log-output">Waiting for actions...</pre>
       </section>
-    </main>
+      </main>
+    </div>
 
     <script src="./app.js"></script>
   </body>

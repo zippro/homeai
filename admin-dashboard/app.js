@@ -43,6 +43,7 @@ const DEFAULT_PROVIDER_SETTINGS = {
 let providerSettingsSnapshot = null;
 let providerOptions = [...INITIAL_PROVIDERS];
 let experimentTemplates = [];
+let activeSectionGroup = "all";
 
 const refs = {
   apiBaseUrl: document.getElementById("apiBaseUrl"),
@@ -143,6 +144,11 @@ const refs = {
   costMaxRetries: document.getElementById("costMaxRetries"),
   costMaxMegapixels: document.getElementById("costMaxMegapixels"),
   costPreviewRequired: document.getElementById("costPreviewRequired"),
+  sectionSearch: document.getElementById("sectionSearch"),
+  groupFilterButtons: Array.from(document.querySelectorAll("[data-group-filter]")),
+  sectionNavLinks: Array.from(document.querySelectorAll(".section-nav-link")),
+  refreshVisible: document.getElementById("refreshVisible"),
+  clearSectionFilters: document.getElementById("clearSectionFilters"),
   activityLog: document.getElementById("activityLog"),
 };
 
@@ -212,6 +218,160 @@ function setConnectionBadge(status, tone = "muted") {
 
 function setLastSync() {
   refs.lastSyncValue.textContent = new Date().toLocaleString();
+}
+
+function getDashboardSections() {
+  return Array.from(document.querySelectorAll(".dashboard-section"));
+}
+
+function updateSectionNavActive(targetId) {
+  refs.sectionNavLinks.forEach((button) => {
+    button.classList.toggle("active", button.dataset.navTarget === targetId);
+  });
+}
+
+function applySectionFilters() {
+  const searchText = refs.sectionSearch.value.trim().toLowerCase();
+  const sections = getDashboardSections();
+  let firstVisible = null;
+
+  sections.forEach((section) => {
+    const group = section.dataset.group || "misc";
+    const title = (section.dataset.sectionTitle || section.id || "").toLowerCase();
+    const idMatch = section.id.toLowerCase();
+    const groupMatch = activeSectionGroup === "all" || group === activeSectionGroup;
+    const searchMatch = !searchText || title.includes(searchText) || idMatch.includes(searchText);
+    const visible = groupMatch && searchMatch;
+    section.classList.toggle("dashboard-section-hidden", !visible);
+    if (visible && !firstVisible) {
+      firstVisible = section;
+    }
+  });
+
+  refs.sectionNavLinks.forEach((button) => {
+    const section = document.getElementById(button.dataset.navTarget || "");
+    const visible = Boolean(section && !section.classList.contains("dashboard-section-hidden"));
+    button.classList.toggle("hidden", !visible);
+  });
+
+  if (firstVisible) {
+    updateSectionNavActive(firstVisible.id);
+  }
+}
+
+function setActiveGroupFilter(groupKey) {
+  activeSectionGroup = groupKey;
+  refs.groupFilterButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.groupFilter === groupKey);
+  });
+  applySectionFilters();
+}
+
+function focusSection(sectionId, smooth = true) {
+  const section = document.getElementById(sectionId);
+  if (!section) {
+    return;
+  }
+
+  if (section.classList.contains("dashboard-section-hidden")) {
+    refs.sectionSearch.value = "";
+    setActiveGroupFilter("all");
+  }
+
+  section.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  section.classList.add("is-focused");
+  window.setTimeout(() => section.classList.remove("is-focused"), 850);
+  updateSectionNavActive(sectionId);
+}
+
+function visibleSectionIds() {
+  return getDashboardSections()
+    .filter((section) => !section.classList.contains("dashboard-section-hidden"))
+    .map((section) => section.id);
+}
+
+function refreshTasksBySection(sectionId) {
+  const taskMap = {
+    analyticsCard: [refreshAnalytics],
+    connectionCard: [testHealth],
+    providerCard: [loadDraftSettings, refreshVersionsAndAudit],
+    plansCard: [refreshPlans],
+    variablesCard: [refreshVariables],
+    experimentsCard: [refreshExperiments, refreshExperimentTemplates, refreshExperimentAudit, refreshExperimentAutomationHistory],
+    creditResetCard: [loadCreditResetSchedule],
+    healthCard: [refreshHealth],
+    productAuditCard: [refreshProductAudit],
+    logCard: [],
+  };
+  return taskMap[sectionId] || [];
+}
+
+async function refreshVisibleSections() {
+  const visible = visibleSectionIds();
+  if (visible.length === 0) {
+    log("No visible sections selected for refresh.", "ERROR");
+    return;
+  }
+
+  const refreshers = [];
+  const seen = new Set();
+  visible.forEach((sectionId) => {
+    refreshTasksBySection(sectionId).forEach((task) => {
+      if (!seen.has(task)) {
+        seen.add(task);
+        refreshers.push(task);
+      }
+    });
+  });
+
+  if (refreshers.length === 0) {
+    log("Visible sections have no refresh tasks.");
+    return;
+  }
+
+  setConnectionBadge("syncing-visible", "pending");
+  try {
+    await Promise.all(refreshers.map((task) => task()));
+    setConnectionBadge("connected", "muted");
+    setLastSync();
+    log(`Refreshed ${visible.length} visible section(s).`);
+  } catch (error) {
+    setConnectionBadge("error", "danger");
+    throw error;
+  }
+}
+
+function bindSectionNavigation() {
+  refs.groupFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveGroupFilter(button.dataset.groupFilter || "all");
+    });
+  });
+
+  refs.sectionSearch.addEventListener("input", () => {
+    applySectionFilters();
+  });
+
+  refs.sectionNavLinks.forEach((button) => {
+    button.addEventListener("click", () => {
+      focusSection(button.dataset.navTarget || "");
+    });
+  });
+
+  refs.clearSectionFilters.addEventListener("click", () => {
+    refs.sectionSearch.value = "";
+    setActiveGroupFilter("all");
+  });
+
+  refs.refreshVisible.addEventListener("click", async () => {
+    try {
+      await refreshVisibleSections();
+    } catch (error) {
+      log(`Refresh visible failed: ${error.message}`, "ERROR");
+    }
+  });
+
+  applySectionFilters();
 }
 
 function actorReasonQuery() {
@@ -2021,6 +2181,7 @@ function init() {
   setExperimentTrendSummary({}, "No trend analysis yet.");
   setExperimentRolloutResult({}, "No rollout evaluation yet.");
   setExperimentAutomationResult({}, "No automation run yet.");
+  bindSectionNavigation();
   bindEvents();
   setConnectionBadge("idle", "pending");
   log("Admin dashboard ready. Set API settings and click Refresh All Data.");

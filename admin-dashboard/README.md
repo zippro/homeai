@@ -24,6 +24,11 @@ Build output: `admin-dashboard/dist/`
 
 ## Dashboard modules
 
+- Left navigation with:
+  - group filters (`Overview`, `Setup`, `AI Routing`, `Monetization`, `Experiments`, `Reliability`, `Audit`)
+  - section search
+  - quick section jump links
+  - `Refresh Visible` to refresh only currently visible sections
 - API connection + health check.
 - Quick Provider Router controls (default provider, enabled providers, fallback chain, per-operation/part routes, provider model IDs).
 - Full JSON editor (draft save/publish/rollback + versions + audit).
