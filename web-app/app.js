@@ -109,7 +109,10 @@ const state = {
 
 const refs = {
   settingsToggle: document.getElementById("settingsToggle"),
+  connectionBackdrop: document.getElementById("connectionBackdrop"),
   connectionPanel: document.getElementById("connectionPanel"),
+  closeSettingsButton: document.getElementById("closeSettingsButton"),
+  toggleLogButton: document.getElementById("toggleLogButton"),
   apiBaseUrl: document.getElementById("apiBaseUrl"),
   userId: document.getElementById("userId"),
   loginButton: document.getElementById("loginButton"),
@@ -169,6 +172,7 @@ const refs = {
   checkoutPlanId: document.getElementById("checkoutPlanId"),
   successUrl: document.getElementById("successUrl"),
   cancelUrl: document.getElementById("cancelUrl"),
+  logCard: document.getElementById("logCard"),
   activityLog: document.getElementById("activityLog"),
 };
 
@@ -194,6 +198,12 @@ function log(message, level = "INFO") {
   const current = refs.activityLog.textContent === "Waiting for actions..." ? "" : refs.activityLog.textContent;
   const line = `[${timestamp}] [${level}] ${message}`;
   refs.activityLog.textContent = current ? `${line}\n${current}` : line;
+  if (level === "ERROR") {
+    refs.logCard.classList.remove("hidden");
+    if (refs.toggleLogButton) {
+      refs.toggleLogButton.textContent = "Hide Logs";
+    }
+  }
 }
 
 function normalizeBaseUrl(raw) {
@@ -226,8 +236,18 @@ function showSetupHint(message, level = "WARN") {
     return;
   }
   state.setupHintShown = true;
-  refs.connectionPanel.classList.remove("hidden");
+  openSettingsPanel();
   log(message, level);
+}
+
+function openSettingsPanel() {
+  refs.connectionBackdrop.classList.remove("hidden");
+  refs.connectionPanel.classList.remove("hidden");
+}
+
+function closeSettingsPanel() {
+  refs.connectionBackdrop.classList.add("hidden");
+  refs.connectionPanel.classList.add("hidden");
 }
 
 function readConnectionInputs() {
@@ -902,7 +922,27 @@ function removeCustomStyle(styleId) {
 
 function bindEvents() {
   refs.settingsToggle.addEventListener("click", () => {
-    refs.connectionPanel.classList.toggle("hidden");
+    if (refs.connectionPanel.classList.contains("hidden")) {
+      openSettingsPanel();
+    } else {
+      closeSettingsPanel();
+    }
+  });
+  refs.closeSettingsButton.addEventListener("click", () => {
+    closeSettingsPanel();
+  });
+  refs.connectionBackdrop.addEventListener("click", () => {
+    closeSettingsPanel();
+  });
+  refs.toggleLogButton.addEventListener("click", () => {
+    const willShow = refs.logCard.classList.contains("hidden");
+    refs.logCard.classList.toggle("hidden", !willShow);
+    refs.toggleLogButton.textContent = willShow ? "Hide Logs" : "Show Logs";
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !refs.connectionPanel.classList.contains("hidden")) {
+      closeSettingsPanel();
+    }
   });
 
   refs.loginButton.addEventListener("click", () => {
@@ -1035,6 +1075,7 @@ async function bootstrap() {
   bindEvents();
   setTab(state.currentTab);
   setCreateStep(state.createStep);
+  refs.toggleLogButton.textContent = refs.logCard.classList.contains("hidden") ? "Show Logs" : "Hide Logs";
 
   const checkoutState = new URLSearchParams(window.location.search).get("checkout");
   if (checkoutState === "success") {

@@ -24,6 +24,7 @@
         </button>
       </header>
 
+      <div id="connectionBackdrop" class="connection-backdrop hidden"></div>
       <section id="connectionPanel" class="connection-panel hidden">
         <h2>Connection</h2>
         <p class="muted">
@@ -41,6 +42,8 @@
           </label>
         </div>
         <div class="action-row">
+          <button id="closeSettingsButton" type="button" class="btn">Close</button>
+          <button id="toggleLogButton" type="button" class="btn">Show Logs</button>
           <button id="loginButton" type="button" class="btn btn-primary">Login</button>
           <button id="logoutButton" type="button" class="btn">Logout</button>
           <button id="refreshButton" type="button" class="btn">Refresh</button>
@@ -59,6 +62,20 @@
             <p>Upload photo, pick room, choose style, and generate AI previews or finals.</p>
             <button id="jumpToCreate" type="button" class="btn btn-primary">Start Creating</button>
           </article>
+          <section class="feature-strip">
+            <article class="feature-item">
+              <p class="feature-title">Fast Preview</p>
+              <p class="feature-copy">Generate style concepts in seconds before final render.</p>
+            </article>
+            <article class="feature-item">
+              <p class="feature-title">Style Library</p>
+              <p class="feature-copy">Pick from curated styles or create your own custom prompt.</p>
+            </article>
+            <article class="feature-item">
+              <p class="feature-title">Cross-Platform</p>
+              <p class="feature-copy">Use the same account on web, iOS, and Android.</p>
+            </article>
+          </section>
 
           <div class="section-head">
             <h3>Your Board</h3>
@@ -229,7 +246,7 @@
         <button type="button" class="tab-btn" data-tab="profile">My Profile</button>
       </nav>
 
-      <section class="log-card">
+      <section id="logCard" class="log-card hidden">
         <h4>Activity Log</h4>
         <pre id="activityLog">Waiting for actions...</pre>
       </section>
