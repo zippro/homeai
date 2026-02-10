@@ -40,3 +40,4 @@ Build output: `web-app/dist/`
 - Current create flow uses image URL input. If you want direct file upload, add backend upload endpoint and swap Step 1 input.
 - Web checkout uses backend-generated checkout URL (`WEB_BILLING_CHECKOUT_BASE_URL`).
 - For cross-origin calls, backend `ALLOWED_ORIGINS` must include this web app origin.
+- On public domains, do not use `localhost` as API URL. Configure `API Base URL` from `Settings` to your production backend domain.

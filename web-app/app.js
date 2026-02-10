@@ -1,6 +1,7 @@
 const SETTINGS_KEY = "homeai-web-settings-v2";
 const TOKEN_KEY = "homeai-web-token-v2";
 const CUSTOM_STYLES_KEY = "homeai-web-custom-styles-v1";
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 const TERMINAL_JOB_STATUS = new Set(["completed", "failed", "canceled"]);
 
@@ -87,7 +88,7 @@ const DEFAULT_STYLES = [
 ];
 
 const state = {
-  apiBaseUrl: "http://localhost:8000",
+  apiBaseUrl: "",
   userId: "homeai_demo_user",
   token: "",
   currentTab: "tools",
@@ -103,6 +104,7 @@ const state = {
   catalog: [],
   currentJob: null,
   pollHandle: null,
+  setupHintShown: false,
 };
 
 const refs = {
@@ -198,9 +200,42 @@ function normalizeBaseUrl(raw) {
   return raw.trim().replace(/\/+$/, "");
 }
 
+function isLocalHost(hostname = window.location.hostname) {
+  return LOCAL_HOSTS.has(String(hostname || "").toLowerCase());
+}
+
+function detectDefaultApiBaseUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = normalizeBaseUrl(params.get("apiBaseUrl") || params.get("api") || "");
+  if (fromQuery) {
+    return fromQuery;
+  }
+  if (isLocalHost()) {
+    return "http://localhost:8000";
+  }
+  return "";
+}
+
+function shouldTreatAsNetworkError(message) {
+  const value = String(message || "").toLowerCase();
+  return value.includes("failed to fetch") || value.includes("networkerror") || value.includes("load failed");
+}
+
+function showSetupHint(message, level = "WARN") {
+  if (state.setupHintShown) {
+    return;
+  }
+  state.setupHintShown = true;
+  refs.connectionPanel.classList.remove("hidden");
+  log(message, level);
+}
+
 function readConnectionInputs() {
   state.apiBaseUrl = normalizeBaseUrl(refs.apiBaseUrl.value || "");
   state.userId = refs.userId.value.trim();
+  if (state.apiBaseUrl) {
+    state.setupHintShown = false;
+  }
 }
 
 function syncConnectionInputs() {
@@ -313,11 +348,16 @@ async function apiRequest(path, { method = "GET", body = undefined, authRequired
     headers.Authorization = `Bearer ${state.token}`;
   }
 
-  const response = await fetch(`${state.apiBaseUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response;
+  try {
+    response = await fetch(`${state.apiBaseUrl}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    throw new Error(`Cannot reach API at ${state.apiBaseUrl}. Check API URL, CORS, and server status.`);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
@@ -646,6 +686,15 @@ async function refreshAuthenticatedData() {
 async function refreshAllData() {
   readConnectionInputs();
   saveConnectionSettings();
+  if (!state.apiBaseUrl) {
+    state.discoverFeed = { tabs: [], sections: [] };
+    state.catalog = [];
+    state.me = null;
+    state.profile = null;
+    state.board = [];
+    showSetupHint("Set API Base URL from Settings, then click Refresh or Login.");
+    return;
+  }
   await Promise.all([loadDiscover(state.discoverTab), loadCatalog()]);
   if (state.token) {
     await refreshAuthenticatedData();
@@ -978,6 +1027,7 @@ function bindEvents() {
 }
 
 async function bootstrap() {
+  state.apiBaseUrl = detectDefaultApiBaseUrl();
   loadConnectionSettings();
   loadToken();
   loadCustomStyles();
@@ -993,6 +1043,10 @@ async function bootstrap() {
     log("Checkout canceled.");
   }
 
+  if (!isLocalHost() && state.apiBaseUrl.startsWith("http://localhost")) {
+    showSetupHint("Public site detected. `localhost` API URL will not work here. Set production API URL in Settings.");
+  }
+
   try {
     await refreshAllData();
     if (checkoutState === "success" && state.token) {
@@ -1000,6 +1054,9 @@ async function bootstrap() {
     }
   } catch (error) {
     log(`Initial load failed: ${error.message}`, "ERROR");
+    if (shouldTreatAsNetworkError(error.message) || error.message.includes("Cannot reach API")) {
+      showSetupHint("Cannot connect to API. Open Settings and set your production API URL.");
+    }
     if (state.token) {
       saveToken("");
     }
