@@ -87,6 +87,29 @@ const DEFAULT_STYLES = [
   },
 ];
 
+const TOOLS_INSPIRATION = [
+  {
+    title: "Soft Modern Living",
+    subtitle: "Neutral tones, wood accents, calming light",
+    image: "https://picsum.photos/id/1063/1200/900",
+  },
+  {
+    title: "Clean Kitchen Lines",
+    subtitle: "High-contrast cabinets with premium surfaces",
+    image: "https://picsum.photos/id/1080/1200/900",
+  },
+  {
+    title: "Boutique Bedroom",
+    subtitle: "Layered textiles and hotel-style atmosphere",
+    image: "https://picsum.photos/id/1067/1200/900",
+  },
+  {
+    title: "Natural Japandi",
+    subtitle: "Minimal layout with warm organic textures",
+    image: "https://picsum.photos/id/1015/1200/900",
+  },
+];
+
 const state = {
   apiBaseUrl: "",
   userId: "homeai_demo_user",
@@ -129,6 +152,8 @@ const refs = {
     profile: document.getElementById("panel-profile"),
   },
   jumpToCreate: document.getElementById("jumpToCreate"),
+  emptyCreateButton: document.getElementById("emptyCreateButton"),
+  inspirationGrid: document.getElementById("inspirationGrid"),
   boardGrid: document.getElementById("boardGrid"),
   boardEmpty: document.getElementById("boardEmpty"),
   createStepLabel: document.getElementById("createStepLabel"),
@@ -457,6 +482,18 @@ function renderBoard() {
     .join("");
 }
 
+function renderToolInspiration() {
+  refs.inspirationGrid.innerHTML = TOOLS_INSPIRATION.map((item) => {
+    return `<article class="inspiration-card">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}" />
+      <div class="inspiration-copy">
+        <h5>${escapeHtml(item.title)}</h5>
+        <p>${escapeHtml(item.subtitle)}</p>
+      </div>
+    </article>`;
+  }).join("");
+}
+
 function renderRoomOptions() {
   refs.roomOptions.innerHTML = ROOM_OPTIONS.map((room) => {
     const activeClass = room.id === state.selectedRoomId ? "active" : "";
@@ -635,6 +672,7 @@ function renderProfile() {
 
 function renderAll() {
   renderStatusPills();
+  renderToolInspiration();
   renderBoard();
   renderRoomOptions();
   renderStyles();
@@ -965,6 +1003,11 @@ function bindEvents() {
   refs.jumpToCreate.addEventListener("click", () => {
     setTab("create");
   });
+  if (refs.emptyCreateButton) {
+    refs.emptyCreateButton.addEventListener("click", () => {
+      setTab("create");
+    });
+  }
 
   refs.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {

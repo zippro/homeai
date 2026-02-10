@@ -185,6 +185,63 @@ main {
   font-size: 14px;
 }
 
+.inspiration-showcase {
+  display: grid;
+  gap: 10px;
+}
+
+.section-head.compact {
+  align-items: center;
+}
+
+.section-head.compact h4 {
+  margin: 0;
+  font-family: Sora, Manrope, sans-serif;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.inspiration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.inspiration-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(17, 24, 39, 0.1);
+}
+
+.inspiration-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.inspiration-copy {
+  padding: 10px;
+}
+
+.inspiration-copy h5,
+.inspiration-copy p {
+  margin: 0;
+}
+
+.inspiration-copy h5 {
+  font-family: Sora, Manrope, sans-serif;
+  font-size: 16px;
+}
+
+.inspiration-copy p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .hero-card h2 {
   margin: 0;
   font-family: Sora, Manrope, sans-serif;
@@ -581,6 +638,33 @@ textarea {
   border-radius: var(--radius-md);
   color: var(--muted);
   background: rgba(255, 255, 255, 0.55);
+}
+
+.empty-board {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: #ffffff;
+  overflow: hidden;
+  display: grid;
+}
+
+.empty-board img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.empty-board-copy {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.empty-board-copy p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .job-card {

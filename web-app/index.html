@@ -76,13 +76,26 @@
               <p class="feature-copy">Use the same account on web, iOS, and Android.</p>
             </article>
           </section>
+          <section class="inspiration-showcase">
+            <div class="section-head compact">
+              <h4>Trending Inspiration</h4>
+              <p>Tap any mood and start from Create</p>
+            </div>
+            <div id="inspirationGrid" class="inspiration-grid"></div>
+          </section>
 
           <div class="section-head">
             <h3>Your Board</h3>
             <p>Latest designs from your account</p>
           </div>
           <div id="boardGrid" class="board-grid"></div>
-          <p id="boardEmpty" class="empty-text hidden">No projects yet. Create your first design now.</p>
+          <article id="boardEmpty" class="empty-board hidden">
+            <img src="https://picsum.photos/id/1040/1200/780" alt="Warm interior inspiration" />
+            <div class="empty-board-copy">
+              <p>No projects yet. Create your first design now.</p>
+              <button id="emptyCreateButton" type="button" class="btn btn-primary">Create First Design</button>
+            </div>
+          </article>
         </section>
 
         <section id="panel-create" class="panel">
