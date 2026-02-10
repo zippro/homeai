@@ -147,6 +147,10 @@ const refs = {
   costMaxRetries: document.getElementById("costMaxRetries"),
   costMaxMegapixels: document.getElementById("costMaxMegapixels"),
   costPreviewRequired: document.getElementById("costPreviewRequired"),
+  routePreviewOperation: document.getElementById("routePreviewOperation"),
+  routePreviewTier: document.getElementById("routePreviewTier"),
+  routePreviewPart: document.getElementById("routePreviewPart"),
+  routePreviewResult: document.getElementById("routePreviewResult"),
   sectionSearch: document.getElementById("sectionSearch"),
   groupFilterButtons: Array.from(document.querySelectorAll("[data-group-filter]")),
   sectionNavLinks: Array.from(document.querySelectorAll(".section-nav-link")),
@@ -618,6 +622,93 @@ function getProviderModels(baseProviderModels = {}) {
   return models;
 }
 
+function dedupe(values) {
+  const result = [];
+  for (const item of values) {
+    if (item && !result.includes(item)) {
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+function resolveProviderCandidatesForPreview(settings, operation, tier, targetParts) {
+  const candidates = [];
+
+  if (Array.isArray(targetParts) && targetParts.length === 1) {
+    const partKey = targetParts[0];
+    const partRule = settings.part_routes?.[partKey];
+    if (partRule) {
+      candidates.push(tier === "preview" ? partRule.preview_provider : partRule.final_provider);
+    }
+  }
+
+  const operationRule = settings.operation_routes?.[operation];
+  if (operationRule) {
+    candidates.push(tier === "preview" ? operationRule.preview_provider : operationRule.final_provider);
+  }
+
+  candidates.push(settings.default_provider);
+  candidates.push(...(settings.fallback_chain || []));
+
+  const availableProviders = new Set(
+    dedupe([
+      ...INITIAL_PROVIDERS,
+      ...Object.keys(settings.provider_models || {}),
+      ...(settings.enabled_providers || []),
+      settings.default_provider,
+      ...(settings.fallback_chain || []),
+    ]),
+  );
+  const enabledProviders = new Set(settings.enabled_providers || []);
+
+  const filtered = dedupe(candidates).filter(
+    (provider) => enabledProviders.has(provider) && availableProviders.has(provider),
+  );
+
+  if (filtered.length === 0) {
+    throw new Error("No enabled provider is available for this route.");
+  }
+  return filtered;
+}
+
+function resolveProviderModelForPreview(settings, providerName, tier) {
+  const providerConfig = settings.provider_models?.[providerName];
+  if (!providerConfig) {
+    throw new Error(`Missing provider model config for ${providerName}.`);
+  }
+  return tier === "preview" ? providerConfig.preview_model : providerConfig.final_model;
+}
+
+function runRoutePreviewFromEditor() {
+  const parsed = parseProviderSettingsFromEditor();
+  const settings = normalizeProviderSettings(parsed);
+  const operation = refs.routePreviewOperation.value;
+  const tier = refs.routePreviewTier.value;
+  const targetPart = refs.routePreviewPart.value;
+  const targetParts = [targetPart];
+
+  const candidates = resolveProviderCandidatesForPreview(settings, operation, tier, targetParts);
+  const selectedProvider = candidates[0];
+  const selectedModel = resolveProviderModelForPreview(settings, selectedProvider, tier);
+
+  const summary = {
+    operation,
+    tier,
+    target_parts: targetParts,
+    default_provider: settings.default_provider,
+    enabled_providers: settings.enabled_providers,
+    fallback_chain: settings.fallback_chain,
+    candidate_chain: candidates,
+    selected_provider: selectedProvider,
+    selected_model: selectedModel,
+    provider_source_label: refs.providerSourceLabel.textContent || "unknown",
+    evaluated_at: new Date().toISOString(),
+  };
+  refs.routePreviewResult.textContent = JSON.stringify(summary, null, 2);
+  log(`Route preview resolved: ${selectedProvider} / ${selectedModel}`);
+}
+
 function buildProviderSettingsFromControls(baseSettings) {
   let enabledProviders = getSelectedEnabledProviders();
   const selectedDefault = refs.defaultProviderSelect.value || baseSettings.default_provider || "fal";
@@ -1083,6 +1174,11 @@ function setProviderEditor(settings, source) {
   refs.providerJsonEditor.value = JSON.stringify(providerSettingsSnapshot, null, 2);
   refs.providerSourceLabel.textContent = `Editor source: ${source}`;
   setProviderControls(providerSettingsSnapshot);
+  try {
+    runRoutePreviewFromEditor();
+  } catch {
+    refs.routePreviewResult.textContent = "No route preview yet.";
+  }
 }
 
 async function loadDraftSettings() {
@@ -1110,6 +1206,20 @@ async function refreshStyles() {
   const styles = await apiRequest("/v1/admin/styles");
   renderStyles(styles);
   log(`Loaded ${styles.length} style(s).`);
+  if (styles.length === 0) {
+    log("Style catalog is empty. Click 'Seed Example Styles' to bootstrap defaults.");
+  }
+}
+
+async function seedStyles(overwrite = false) {
+  const response = await apiRequest(
+    `/v1/admin/styles/seed-defaults?overwrite=${overwrite ? "true" : "false"}&${actorReasonQuery()}`,
+    { method: "POST" },
+  );
+  log(
+    `Seed styles completed (inserted=${response.inserted_count}, updated=${response.updated_count}, skipped=${response.skipped_count}).`,
+  );
+  return response;
 }
 
 async function refreshPlans() {
@@ -1745,6 +1855,15 @@ function bindEvents() {
     }
   });
 
+  document.getElementById("runRoutePreview").addEventListener("click", () => {
+    try {
+      runRoutePreviewFromEditor();
+    } catch (error) {
+      refs.routePreviewResult.textContent = `Route preview error: ${error.message}`;
+      log(`Route preview failed: ${error.message}`, "ERROR");
+    }
+  });
+
   document.getElementById("saveDraft").addEventListener("click", async () => {
     try {
       const payload = JSON.parse(refs.providerJsonEditor.value);
@@ -1817,6 +1936,20 @@ function bindEvents() {
       setLastSync();
     } catch (error) {
       log(error.message, "ERROR");
+    }
+  });
+
+  document.getElementById("seedStyles").addEventListener("click", async () => {
+    try {
+      const shouldOverwrite = window.confirm(
+        "Overwrite existing default style IDs as well?\n\nOK = overwrite defaults\nCancel = only create missing defaults",
+      );
+      await seedStyles(shouldOverwrite);
+      await refreshStyles();
+      await refreshProductAudit();
+      setLastSync();
+    } catch (error) {
+      log(`Seed styles failed: ${error.message}`, "ERROR");
     }
   });
 

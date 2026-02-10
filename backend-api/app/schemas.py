@@ -174,6 +174,14 @@ class StyleUpsertRequest(BaseModel):
     sort_order: int = 0
 
 
+class StyleSeedResponse(BaseModel):
+    inserted_count: int
+    updated_count: int
+    skipped_count: int
+    overwrite: bool = False
+    style_ids: list[str] = Field(default_factory=list)
+
+
 class AppVariable(BaseModel):
     key: str
     value: ScalarValue

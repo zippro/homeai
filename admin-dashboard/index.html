@@ -207,12 +207,52 @@
             <ul id="auditList" class="list"></ul>
           </div>
         </div>
+        <div class="section-head">
+          <h3>Model Route Preview</h3>
+        </div>
+        <p class="section-note">
+          Preview which provider/model will be selected for a given operation, tier, and room part using the current
+          JSON editor settings.
+        </p>
+        <div class="actions">
+          <label class="inline-control">
+            Operation
+            <select id="routePreviewOperation">
+              <option value="restyle">restyle</option>
+              <option value="replace">replace</option>
+              <option value="remove">remove</option>
+              <option value="repaint">repaint</option>
+            </select>
+          </label>
+          <label class="inline-control">
+            Tier
+            <select id="routePreviewTier">
+              <option value="preview">preview</option>
+              <option value="final">final</option>
+            </select>
+          </label>
+          <label class="inline-control">
+            Target Part
+            <select id="routePreviewPart">
+              <option value="full_room">full_room</option>
+              <option value="walls">walls</option>
+              <option value="floor">floor</option>
+              <option value="furniture">furniture</option>
+              <option value="decor">decor</option>
+            </select>
+          </label>
+          <button id="runRoutePreview" type="button" class="btn btn-accent">Preview Route</button>
+        </div>
+        <pre id="routePreviewResult" class="log-output compact-log">No route preview yet.</pre>
       </section>
 
       <section class="card dashboard-section" id="styleCard" data-section-title="Style Catalog" data-group="ai">
         <div class="section-head">
           <h2>Style Catalog</h2>
-          <button id="refreshStyles" type="button" class="btn">Refresh</button>
+          <div class="actions no-margin">
+            <button id="seedStyles" type="button" class="btn btn-accent">Seed Example Styles</button>
+            <button id="refreshStyles" type="button" class="btn">Refresh</button>
+          </div>
         </div>
         <p class="section-note">
           Create and maintain reusable styles with prompt templates and thumbnail URLs. These styles are consumed by

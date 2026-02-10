@@ -68,7 +68,22 @@ class StyleCatalogRouteTests(unittest.TestCase):
         self.assertEqual(missing_response.status_code, 404)
         self.assertEqual(missing_response.json()["detail"], "style_not_found")
 
+    def test_admin_seed_defaults_endpoint_returns_summary(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "development", "ADMIN_API_TOKEN": "", "ADMIN_USER_IDS": ""},
+            clear=False,
+        ):
+            response = self.client.post("/v1/admin/styles/seed-defaults?overwrite=false&actor=test_suite")
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertIn("inserted_count", payload)
+            self.assertIn("updated_count", payload)
+            self.assertIn("skipped_count", payload)
+            self.assertIn("style_ids", payload)
+            self.assertIn("overwrite", payload)
+            self.assertFalse(payload["overwrite"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

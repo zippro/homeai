@@ -10,6 +10,7 @@ from app.product_store import (
     list_plans,
     list_product_audit,
     list_styles,
+    seed_default_styles,
     list_variables,
     upsert_style,
     upsert_plan,
@@ -22,6 +23,7 @@ from app.schemas import (
     PlanConfig,
     PlanUpsertRequest,
     StylePreset,
+    StyleSeedResponse,
     StyleUpsertRequest,
     VariableUpsertRequest,
 )
@@ -47,6 +49,18 @@ async def put_style(
     reason: str | None = Query(default=None),
 ) -> StylePreset:
     return upsert_style(style_id, payload, AdminActionRequest(actor=actor, reason=reason))
+
+
+@router.post("/styles/seed-defaults", response_model=StyleSeedResponse)
+async def post_seed_default_styles(
+    overwrite: bool = Query(default=False),
+    actor: str = Query(default="dashboard"),
+    reason: str | None = Query(default=None),
+) -> StyleSeedResponse:
+    return seed_default_styles(
+        action=AdminActionRequest(actor=actor, reason=reason),
+        overwrite=overwrite,
+    )
 
 
 @router.delete("/styles/{style_id}")

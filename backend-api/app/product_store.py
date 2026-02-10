@@ -13,6 +13,7 @@ from app.schemas import (
     PlanConfig,
     PlanUpsertRequest,
     StylePreset,
+    StyleSeedResponse,
     StyleUpsertRequest,
     VariableUpsertRequest,
 )
@@ -271,6 +272,60 @@ def delete_style(style_id: str, action: AdminActionRequest) -> bool:
         )
 
     return True
+
+
+def seed_default_styles(action: AdminActionRequest, overwrite: bool = False) -> StyleSeedResponse:
+    inserted_count = 0
+    updated_count = 0
+    skipped_count = 0
+    touched_style_ids: list[str] = []
+
+    with session_scope() as session:
+        for style in _DEFAULT_STYLES.values():
+            existing = session.get(StyleModel, style.style_id)
+            if existing:
+                if overwrite:
+                    existing.payload_json = style.model_dump(mode="json")
+                    existing.is_active = style.is_active
+                    existing.updated_at = utc_now()
+                    updated_count += 1
+                    touched_style_ids.append(style.style_id)
+                else:
+                    skipped_count += 1
+                continue
+
+            session.add(
+                StyleModel(
+                    style_id=style.style_id,
+                    payload_json=style.model_dump(mode="json"),
+                    is_active=style.is_active,
+                    updated_at=utc_now(),
+                )
+            )
+            inserted_count += 1
+            touched_style_ids.append(style.style_id)
+
+        _append_audit(
+            session=session,
+            action="styles_seeded_defaults",
+            actor=action.actor,
+            reason=action.reason,
+            metadata={
+                "overwrite": overwrite,
+                "inserted_count": inserted_count,
+                "updated_count": updated_count,
+                "skipped_count": skipped_count,
+                "style_ids": touched_style_ids,
+            },
+        )
+
+    return StyleSeedResponse(
+        inserted_count=inserted_count,
+        updated_count=updated_count,
+        skipped_count=skipped_count,
+        overwrite=overwrite,
+        style_ids=touched_style_ids,
+    )
 
 
 def upsert_plan(plan_id: str, payload: PlanUpsertRequest, action: AdminActionRequest) -> PlanConfig:
