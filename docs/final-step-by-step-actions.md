@@ -69,6 +69,19 @@ In admin dashboard:
 5. `Variables`
    - Verify core flags (preview/final and credit controls).
 
+## 5.5) Verify API endpoints from your machine
+
+Run these against your production API URL:
+
+```bash
+curl -fsS "https://api.yourdomain.com/healthz"
+curl -fsS "https://api.yourdomain.com/v1/config/provider-route-preview?operation=restyle&tier=preview&target_part=full_room"
+```
+
+Expected:
+- `healthz` returns `{"status":"ok"}`
+- route preview returns JSON with `selected_provider` and `selected_model`
+
 ## 6) End-user web smoke test
 
 From `/web-app/index.html`:
