@@ -153,6 +153,27 @@ class PlanUpsertRequest(BaseModel):
     features: list[str] = Field(default_factory=list)
 
 
+class StylePreset(BaseModel):
+    style_id: str
+    display_name: str
+    prompt: str
+    thumbnail_url: HttpUrl | None = None
+    is_active: bool = True
+    tags: list[str] = Field(default_factory=list)
+    room_types: list[str] = Field(default_factory=list)
+    sort_order: int = 0
+
+
+class StyleUpsertRequest(BaseModel):
+    display_name: str
+    prompt: str
+    thumbnail_url: HttpUrl | None = None
+    is_active: bool = True
+    tags: list[str] = Field(default_factory=list)
+    room_types: list[str] = Field(default_factory=list)
+    sort_order: int = 0
+
+
 class AppVariable(BaseModel):
     key: str
     value: ScalarValue
@@ -650,6 +671,7 @@ class EventIngestResponse(BaseModel):
 
 class MobileBootstrapConfigResponse(BaseModel):
     active_plans: list[PlanConfig]
+    styles: list[StylePreset] = Field(default_factory=list)
     variables: dict[str, ScalarValue]
     provider_defaults: dict[str, Any]
 
@@ -751,6 +773,7 @@ class SessionBootstrapResponse(BaseModel):
     board: UserBoardResponse
     experiments: ActiveExperimentAssignmentsResponse
     catalog: list[PlanConfig]
+    styles: list[StylePreset] = Field(default_factory=list)
     variables: dict[str, ScalarValue]
     provider_defaults: dict[str, Any]
 

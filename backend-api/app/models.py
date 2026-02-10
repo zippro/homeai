@@ -62,6 +62,20 @@ class PlanModel(Base):
     )
 
 
+class StyleModel(Base):
+    __tablename__ = "styles"
+
+    style_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+
+
 class VariableModel(Base):
     __tablename__ = "variables"
 

@@ -52,6 +52,7 @@
           <button type="button" class="section-nav-link" data-nav-target="analyticsCard">Analytics Overview</button>
           <button type="button" class="section-nav-link" data-nav-target="connectionCard">API Settings</button>
           <button type="button" class="section-nav-link" data-nav-target="providerCard">Provider Settings</button>
+          <button type="button" class="section-nav-link" data-nav-target="styleCard">Style Catalog</button>
           <button type="button" class="section-nav-link" data-nav-target="plansCard">Plans</button>
           <button type="button" class="section-nav-link" data-nav-target="variablesCard">Variables</button>
           <button type="button" class="section-nav-link" data-nav-target="experimentsCard">Experiments</button>
@@ -205,6 +206,78 @@
             <h3>Provider Audit</h3>
             <ul id="auditList" class="list"></ul>
           </div>
+        </div>
+      </section>
+
+      <section class="card dashboard-section" id="styleCard" data-section-title="Style Catalog" data-group="ai">
+        <div class="section-head">
+          <h2>Style Catalog</h2>
+          <button id="refreshStyles" type="button" class="btn">Refresh</button>
+        </div>
+        <p class="section-note">
+          Create and maintain reusable styles with prompt templates and thumbnail URLs. These styles are consumed by
+          web, iOS, and Android clients.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Style</th>
+                <th>Prompt</th>
+                <th>Thumbnail</th>
+                <th>Tags</th>
+                <th>Rooms</th>
+                <th>Sort</th>
+                <th>Active</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="stylesTableBody"></tbody>
+          </table>
+        </div>
+        <form id="styleForm" class="grid two-columns">
+          <label>
+            Style ID
+            <input id="styleId" required type="text" placeholder="modern" />
+          </label>
+          <label>
+            Display Name
+            <input id="styleDisplayName" required type="text" placeholder="Modern" />
+          </label>
+          <label class="full-width">
+            Prompt Template
+            <textarea id="stylePrompt" rows="4" spellcheck="false" placeholder="Describe the style prompt"></textarea>
+          </label>
+          <label>
+            Thumbnail URL
+            <input id="styleThumbnailUrl" type="url" placeholder="https://..." />
+          </label>
+          <label>
+            Sort Order
+            <input id="styleSortOrder" type="number" min="0" step="1" value="0" />
+          </label>
+          <label>
+            Tags (comma separated)
+            <input id="styleTagsCsv" type="text" placeholder="modern,clean,neutral" />
+          </label>
+          <label>
+            Room Types (comma separated)
+            <input id="styleRoomTypesCsv" type="text" placeholder="living_room,bedroom,kitchen" />
+          </label>
+          <label class="switch full-width">
+            <input id="styleActive" type="checkbox" checked />
+            <span>Style Active</span>
+          </label>
+          <div class="actions full-width">
+            <button type="submit" class="btn btn-primary">Upsert Style</button>
+            <input id="deleteStyleId" type="text" placeholder="style_id to delete" class="input-compact" />
+            <button id="deleteStyleButton" type="button" class="btn btn-danger">Delete Style</button>
+          </div>
+        </form>
+        <div>
+          <h3>Style Preview Grid</h3>
+          <p class="section-note">Visual check for thumbnails and prompt quality before release.</p>
+          <div id="styleGallery" class="style-gallery"></div>
         </div>
       </section>
 

@@ -43,6 +43,7 @@ const DEFAULT_PROVIDER_SETTINGS = {
 let providerSettingsSnapshot = null;
 let providerOptions = [...INITIAL_PROVIDERS];
 let experimentTemplates = [];
+let styleCatalogCache = [];
 let activeSectionGroup = "all";
 
 const refs = {
@@ -85,6 +86,8 @@ const refs = {
   experimentAutomationLimit: document.getElementById("experimentAutomationLimit"),
   experimentAutomationResult: document.getElementById("experimentAutomationResult"),
   plansTableBody: document.getElementById("plansTableBody"),
+  stylesTableBody: document.getElementById("stylesTableBody"),
+  styleGallery: document.getElementById("styleGallery"),
   variablesTableBody: document.getElementById("variablesTableBody"),
   providerHealthTableBody: document.getElementById("providerHealthTableBody"),
   analyticsProviderTableBody: document.getElementById("analyticsProviderTableBody"),
@@ -295,6 +298,7 @@ function refreshTasksBySection(sectionId) {
     analyticsCard: [refreshAnalytics],
     connectionCard: [testHealth],
     providerCard: [loadDraftSettings, refreshVersionsAndAudit],
+    styleCard: [refreshStyles],
     plansCard: [refreshPlans],
     variablesCard: [refreshVariables],
     experimentsCard: [refreshExperiments, refreshExperimentTemplates, refreshExperimentAudit, refreshExperimentAutomationHistory],
@@ -744,6 +748,78 @@ function renderPlans(plans) {
     .join("");
 }
 
+function parseCsvList(rawValue) {
+  return String(rawValue || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function setStyleForm(style) {
+  document.getElementById("styleId").value = style?.style_id || "";
+  document.getElementById("styleDisplayName").value = style?.display_name || "";
+  document.getElementById("stylePrompt").value = style?.prompt || "";
+  document.getElementById("styleThumbnailUrl").value = style?.thumbnail_url || "";
+  document.getElementById("styleTagsCsv").value = (style?.tags || []).join(", ");
+  document.getElementById("styleRoomTypesCsv").value = (style?.room_types || []).join(", ");
+  document.getElementById("styleSortOrder").value = String(style?.sort_order ?? 0);
+  document.getElementById("styleActive").checked = Boolean(style?.is_active ?? true);
+}
+
+function renderStyles(styles) {
+  styleCatalogCache = Array.isArray(styles) ? styles : [];
+
+  if (!Array.isArray(styles) || styles.length === 0) {
+    refs.stylesTableBody.innerHTML = '<tr><td colspan="8">No styles found.</td></tr>';
+    refs.styleGallery.innerHTML = '<p class="section-note">No style previews yet.</p>';
+    return;
+  }
+
+  refs.stylesTableBody.innerHTML = styles
+    .map((style) => {
+      const promptSnippet =
+        style.prompt && style.prompt.length > 180 ? `${style.prompt.slice(0, 177)}...` : style.prompt || "";
+      const tags = Array.isArray(style.tags) && style.tags.length > 0 ? style.tags.join(", ") : "-";
+      const roomTypes = Array.isArray(style.room_types) && style.room_types.length > 0 ? style.room_types.join(", ") : "-";
+      const thumb = style.thumbnail_url
+        ? `<img src="${escapeHtml(style.thumbnail_url)}" alt="${escapeHtml(style.display_name || style.style_id)}" class="style-table-thumb" />`
+        : "<span class=\"muted\">-</span>";
+      return `<tr>
+        <td><strong>${escapeHtml(style.style_id)}</strong><br /><small>${escapeHtml(style.display_name || "-")}</small></td>
+        <td>${escapeHtml(promptSnippet || "-")}</td>
+        <td>${thumb}</td>
+        <td>${escapeHtml(tags)}</td>
+        <td>${escapeHtml(roomTypes)}</td>
+        <td>${Number(style.sort_order || 0)}</td>
+        <td>${style.is_active ? "yes" : "no"}</td>
+        <td><button type="button" class="btn" data-edit-style-id="${escapeHtml(style.style_id)}">Edit</button></td>
+      </tr>`;
+    })
+    .join("");
+
+  refs.styleGallery.innerHTML = styles
+    .map((style) => {
+      const tagMarkup =
+        Array.isArray(style.tags) && style.tags.length > 0
+          ? style.tags.map((tag) => `<span class="style-tag">${escapeHtml(tag)}</span>`).join("")
+          : '<span class="style-tag style-tag-muted">no tags</span>';
+      const promptPreview = style.prompt || "-";
+      const thumb = style.thumbnail_url
+        ? `<img src="${escapeHtml(style.thumbnail_url)}" alt="${escapeHtml(style.display_name || style.style_id)}" />`
+        : '<div class="style-gallery-empty">No thumbnail URL</div>';
+      return `<article class="style-gallery-card ${style.is_active ? "" : "is-inactive"}">
+        ${thumb}
+        <div class="style-gallery-copy">
+          <h4>${escapeHtml(style.display_name || style.style_id)}</h4>
+          <p class="style-meta">${escapeHtml(style.style_id)} • sort ${Number(style.sort_order || 0)}</p>
+          <p>${escapeHtml(promptPreview)}</p>
+          <div class="style-tag-row">${tagMarkup}</div>
+        </div>
+      </article>`;
+    })
+    .join("");
+}
+
 function renderExperiments(experiments) {
   if (!Array.isArray(experiments) || experiments.length === 0) {
     refs.experimentsTableBody.innerHTML = '<tr><td colspan="5">No experiments found.</td></tr>';
@@ -1028,6 +1104,12 @@ async function refreshVersionsAndAudit() {
   ]);
   renderVersions(versions);
   renderAudit(audit);
+}
+
+async function refreshStyles() {
+  const styles = await apiRequest("/v1/admin/styles");
+  renderStyles(styles);
+  log(`Loaded ${styles.length} style(s).`);
 }
 
 async function refreshPlans() {
@@ -1542,6 +1624,7 @@ async function refreshAll() {
     await Promise.all([
       loadDraftSettings(),
       refreshVersionsAndAudit(),
+      refreshStyles(),
       refreshPlans(),
       refreshVariables(),
       refreshExperiments(),
@@ -1725,6 +1808,94 @@ function bindEvents() {
       log(`Rollback completed. Active version is now ${summary.version}.`);
     } catch (error) {
       log(`Rollback failed: ${error.message}`, "ERROR");
+    }
+  });
+
+  document.getElementById("refreshStyles").addEventListener("click", async () => {
+    try {
+      await refreshStyles();
+      setLastSync();
+    } catch (error) {
+      log(error.message, "ERROR");
+    }
+  });
+
+  refs.stylesTableBody.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-edit-style-id]");
+    if (!trigger) {
+      return;
+    }
+    const styleId = trigger.getAttribute("data-edit-style-id");
+    const style = styleCatalogCache.find((item) => item.style_id === styleId);
+    if (!style) {
+      log(`Style not found in cache: ${styleId}`, "ERROR");
+      return;
+    }
+    setStyleForm(style);
+    document.getElementById("deleteStyleId").value = style.style_id;
+    log(`Loaded style ${style.style_id} into editor.`);
+  });
+
+  document.getElementById("styleForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+      const styleId = document.getElementById("styleId").value.trim();
+      if (!styleId) {
+        throw new Error("Style ID is required.");
+      }
+
+      const payload = {
+        display_name: document.getElementById("styleDisplayName").value.trim(),
+        prompt: document.getElementById("stylePrompt").value.trim(),
+        thumbnail_url: document.getElementById("styleThumbnailUrl").value.trim() || null,
+        is_active: document.getElementById("styleActive").checked,
+        tags: parseCsvList(document.getElementById("styleTagsCsv").value),
+        room_types: parseCsvList(document.getElementById("styleRoomTypesCsv").value),
+        sort_order: Number(document.getElementById("styleSortOrder").value || 0),
+      };
+      if (!payload.display_name) {
+        throw new Error("Display Name is required.");
+      }
+      if (!payload.prompt) {
+        throw new Error("Prompt template is required.");
+      }
+
+      await apiRequest(`/v1/admin/styles/${encodeURIComponent(styleId)}?${actorReasonQuery()}`, {
+        method: "PUT",
+        body: payload,
+      });
+      await refreshStyles();
+      await refreshProductAudit();
+      setLastSync();
+      document.getElementById("deleteStyleId").value = styleId;
+      log(`Upserted style ${styleId}.`);
+    } catch (error) {
+      log(`Upsert style failed: ${error.message}`, "ERROR");
+    }
+  });
+
+  document.getElementById("deleteStyleButton").addEventListener("click", async () => {
+    const styleId = document.getElementById("deleteStyleId").value.trim();
+    if (!styleId) {
+      log("Enter a style ID to delete.", "ERROR");
+      return;
+    }
+
+    if (!window.confirm(`Delete style ${styleId}?`)) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/v1/admin/styles/${encodeURIComponent(styleId)}?${actorReasonQuery()}`, {
+        method: "DELETE",
+      });
+      await refreshStyles();
+      await refreshProductAudit();
+      setLastSync();
+      log(`Deleted style ${styleId}.`);
+    } catch (error) {
+      log(`Delete style failed: ${error.message}`, "ERROR");
     }
   });
 
@@ -2102,6 +2273,17 @@ function init() {
   setProviderEditor(DEFAULT_PROVIDER_SETTINGS, "defaults");
   renderProviderHealth({});
   renderProductAudit([]);
+  renderStyles([]);
+  setStyleForm({
+    style_id: "modern",
+    display_name: "Modern",
+    prompt: "Modern clean interior design with balanced composition and natural daylight.",
+    thumbnail_url: "https://picsum.photos/id/1068/900/900",
+    is_active: true,
+    tags: ["clean", "contemporary"],
+    room_types: ["living_room", "bedroom", "kitchen"],
+    sort_order: 10,
+  });
   renderExperiments([]);
   renderExperimentTemplates([]);
   renderExperimentAudit([]);

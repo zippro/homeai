@@ -7,7 +7,7 @@ from app.auth_store import get_me
 from app.auth_utils import parse_bearer_token
 from app.experiment_store import assign_active_experiments_for_user
 from app.job_store import get_user_board
-from app.product_store import get_variable_map, list_plans
+from app.product_store import get_variable_map, list_active_styles, list_plans
 from app.profile_store import get_profile_overview
 from app.schemas import ActiveExperimentAssignmentsResponse, SessionBootstrapResponse
 from app.settings_store import get_provider_settings, get_provider_settings_meta
@@ -34,6 +34,7 @@ async def session_bootstrap_me(
     assignments = assign_active_experiments_for_user(user_id=auth_user_id, limit=experiment_limit)
     experiments = ActiveExperimentAssignmentsResponse(user_id=auth_user_id, assignments=assignments)
     catalog = [plan for plan in list_plans() if plan.is_active]
+    styles = list_active_styles()
 
     provider_settings = get_provider_settings()
     provider_meta = get_provider_settings_meta()
@@ -49,7 +50,7 @@ async def session_bootstrap_me(
         board=board,
         experiments=experiments,
         catalog=catalog,
+        styles=styles,
         variables=get_variable_map(),
         provider_defaults=provider_defaults,
     )
-

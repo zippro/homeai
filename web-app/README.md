@@ -8,7 +8,7 @@ Web client for the same backend/account used by iOS and Android.
 - 4-step create wizard:
   - Step 1: image input + preview.
   - Step 2: room type selection.
-  - Step 3: style selection with thumbnails.
+  - Step 3: style selection with thumbnails (loaded from backend `/v1/styles`, with local fallback).
   - Step 3: custom style creation (name + prompt + thumbnail URL) persisted in browser storage.
   - Step 4: review + render submission.
 - Render flow on shared backend (`/v1/ai/render-jobs`, poll `/v1/ai/render-jobs/{job_id}`).

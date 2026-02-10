@@ -21,6 +21,7 @@ from app.routes.profile import router as profile_router
 from app.routes.projects import router as projects_router
 from app.routes.render_jobs import router as render_router
 from app.routes.session import router as session_router
+from app.routes.styles import router as styles_router
 from app.routes.subscriptions import admin_router as admin_subscriptions_router
 from app.routes.subscriptions import router as subscriptions_router
 from app.routes.webhooks import router as webhooks_router
@@ -71,6 +72,7 @@ app.include_router(config_router)
 app.include_router(credits_router)
 app.include_router(credit_reset_router)
 app.include_router(subscriptions_router)
+app.include_router(styles_router)
 app.include_router(admin_subscriptions_router)
 app.include_router(admin_experiments_router)
 app.include_router(provider_health_router)

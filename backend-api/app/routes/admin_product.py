@@ -4,15 +4,27 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import require_admin_access
 from app.product_store import (
+    delete_style,
     delete_plan,
     delete_variable,
     list_plans,
     list_product_audit,
+    list_styles,
     list_variables,
+    upsert_style,
     upsert_plan,
     upsert_variable,
 )
-from app.schemas import AdminActionRequest, AppVariable, AuditLogEntry, PlanConfig, PlanUpsertRequest, VariableUpsertRequest
+from app.schemas import (
+    AdminActionRequest,
+    AppVariable,
+    AuditLogEntry,
+    PlanConfig,
+    PlanUpsertRequest,
+    StylePreset,
+    StyleUpsertRequest,
+    VariableUpsertRequest,
+)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"], dependencies=[Depends(require_admin_access)])
 
@@ -20,6 +32,33 @@ router = APIRouter(prefix="/v1/admin", tags=["admin"], dependencies=[Depends(req
 @router.get("/plans", response_model=list[PlanConfig])
 async def get_plans() -> list[PlanConfig]:
     return list_plans()
+
+
+@router.get("/styles", response_model=list[StylePreset])
+async def get_styles(active_only: bool = Query(default=False)) -> list[StylePreset]:
+    return list_styles(active_only=active_only)
+
+
+@router.put("/styles/{style_id}", response_model=StylePreset)
+async def put_style(
+    style_id: str,
+    payload: StyleUpsertRequest,
+    actor: str = Query(default="dashboard"),
+    reason: str | None = Query(default=None),
+) -> StylePreset:
+    return upsert_style(style_id, payload, AdminActionRequest(actor=actor, reason=reason))
+
+
+@router.delete("/styles/{style_id}")
+async def remove_style(
+    style_id: str,
+    actor: str = Query(default="dashboard"),
+    reason: str | None = Query(default=None),
+) -> dict[str, bool]:
+    deleted = delete_style(style_id, AdminActionRequest(actor=actor, reason=reason))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="style_not_found")
+    return {"deleted": True}
 
 
 @router.put("/plans/{plan_id}", response_model=PlanConfig)

@@ -118,6 +118,7 @@ const state = {
   createStep: 1,
   selectedRoomId: "",
   selectedStyleId: "modern",
+  remoteStyles: [],
   customStyles: [],
   discoverTab: "",
   me: null,
@@ -361,8 +362,27 @@ function loadCustomStyles() {
   }
 }
 
+function normalizeRemoteStyles(styles) {
+  return (Array.isArray(styles) ? styles : [])
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      id: String(item.style_id || "").trim(),
+      name: String(item.display_name || item.style_id || "").trim(),
+      prompt: String(item.prompt || "").trim(),
+      thumbnail: String(item.thumbnail_url || "").trim(),
+      custom: false,
+    }))
+    .filter((item) => item.id && item.name && item.prompt && item.thumbnail);
+}
+
 function getAllStyles() {
-  return [...DEFAULT_STYLES, ...state.customStyles];
+  const baseStyles = state.remoteStyles.length > 0 ? state.remoteStyles : DEFAULT_STYLES;
+  return [...baseStyles, ...state.customStyles];
+}
+
+function getFallbackStyleId() {
+  const styles = getAllStyles();
+  return styles[0]?.id || DEFAULT_STYLES[0]?.id || "";
 }
 
 function getSelectedStyle() {
@@ -504,8 +524,12 @@ function renderRoomOptions() {
 }
 
 function renderStyles() {
+  const styles = getAllStyles();
+  if (!styles.some((item) => item.id === state.selectedStyleId)) {
+    state.selectedStyleId = styles[0]?.id || "";
+  }
   const selected = state.selectedStyleId;
-  refs.styleGrid.innerHTML = getAllStyles()
+  refs.styleGrid.innerHTML = styles
     .map((style) => {
       const isActive = style.id === selected;
       const activeClass = isActive ? "active" : "";
@@ -724,6 +748,14 @@ async function loadCatalog() {
   state.catalog = await apiRequest("/v1/subscriptions/catalog", { authRequired: false });
 }
 
+async function loadStyles() {
+  const styles = await apiRequest("/v1/styles", { authRequired: false });
+  state.remoteStyles = normalizeRemoteStyles(styles);
+  if (!getSelectedStyle()) {
+    state.selectedStyleId = getFallbackStyleId();
+  }
+}
+
 async function refreshAuthenticatedData() {
   const bootstrap = await apiRequest("/v1/session/bootstrap/me?board_limit=30&experiment_limit=50", {
     authRequired: true,
@@ -747,13 +779,14 @@ async function refreshAllData() {
   if (!state.apiBaseUrl) {
     state.discoverFeed = { tabs: [], sections: [] };
     state.catalog = [];
+    state.remoteStyles = [];
     state.me = null;
     state.profile = null;
     state.board = [];
     showSetupHint("Set API Base URL from Settings, then click Refresh or Login.");
     return;
   }
-  await Promise.all([loadDiscover(state.discoverTab), loadCatalog()]);
+  await Promise.all([loadDiscover(state.discoverTab), loadCatalog(), loadStyles()]);
   if (state.token) {
     await refreshAuthenticatedData();
   } else {
@@ -948,7 +981,7 @@ function removeCustomStyle(styleId) {
   state.customStyles = state.customStyles.filter((item) => item.id !== styleId);
   if (state.customStyles.length !== before) {
     if (state.selectedStyleId === styleId) {
-      state.selectedStyleId = DEFAULT_STYLES[0]?.id || "";
+      state.selectedStyleId = getFallbackStyleId();
     }
     saveCustomStyles();
     renderStyles();

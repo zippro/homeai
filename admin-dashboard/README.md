@@ -1,6 +1,6 @@
 # Admin Dashboard (Web)
 
-Standalone admin panel for provider settings, plans, variables, provider health, and analytics KPIs.
+Standalone admin panel for provider settings, styles, plans, variables, provider health, and analytics KPIs.
 
 ## Local usage
 
@@ -32,6 +32,7 @@ Build output: `admin-dashboard/dist/`
 - API connection + health check.
 - Quick Provider Router controls (default provider, enabled providers, fallback chain, per-operation/part routes, provider model IDs).
 - Full JSON editor (draft save/publish/rollback + versions + audit).
+- Style catalog CRUD (style ID, name, prompt template, thumbnail URL, tags, room types, sort order, active flag) with visual preview grid.
 - Plans CRUD.
 - Variables CRUD.
 - Experiments (A/B) CRUD + audit.

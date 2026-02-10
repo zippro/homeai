@@ -1,13 +1,21 @@
 from __future__ import annotations
 
-from datetime import datetime
 from app.time_utils import utc_now
 
 from sqlalchemy import desc, select
 
 from app.db import session_scope
-from app.models import AdminAuditLogModel, PlanModel, VariableModel
-from app.schemas import AdminActionRequest, AppVariable, AuditLogEntry, PlanConfig, PlanUpsertRequest, VariableUpsertRequest
+from app.models import AdminAuditLogModel, PlanModel, StyleModel, VariableModel
+from app.schemas import (
+    AdminActionRequest,
+    AppVariable,
+    AuditLogEntry,
+    PlanConfig,
+    PlanUpsertRequest,
+    StylePreset,
+    StyleUpsertRequest,
+    VariableUpsertRequest,
+)
 
 _PRODUCT_DOMAIN = "product"
 
@@ -50,6 +58,93 @@ _DEFAULT_VARIABLES: dict[str, AppVariable] = {
     ),
 }
 
+_DEFAULT_STYLES: dict[str, StylePreset] = {
+    "modern": StylePreset(
+        style_id="modern",
+        display_name="Modern",
+        prompt=(
+            "Modern clean interior design with balanced composition, natural daylight, premium materials, "
+            "and minimal visual clutter."
+        ),
+        thumbnail_url="https://picsum.photos/id/1068/900/900",
+        tags=["clean", "contemporary"],
+        room_types=["living_room", "bedroom", "kitchen"],
+        sort_order=10,
+    ),
+    "minimalistic": StylePreset(
+        style_id="minimalistic",
+        display_name="Minimalistic",
+        prompt="Minimalist interior with uncluttered surfaces, neutral palette, and calm airy atmosphere.",
+        thumbnail_url="https://picsum.photos/id/1059/900/900",
+        tags=["minimal", "neutral"],
+        room_types=["living_room", "bedroom", "home_office"],
+        sort_order=20,
+    ),
+    "bohemian": StylePreset(
+        style_id="bohemian",
+        display_name="Bohemian",
+        prompt="Bohemian interior with layered textiles, handcrafted decor, earthy tones, and eclectic accents.",
+        thumbnail_url="https://picsum.photos/id/1044/900/900",
+        tags=["warm", "eclectic"],
+        room_types=["living_room", "bedroom", "coffee_shop"],
+        sort_order=30,
+    ),
+    "scandinavian": StylePreset(
+        style_id="scandinavian",
+        display_name="Scandinavian",
+        prompt="Scandinavian interior with warm oak details, white walls, cozy textiles, and soft daylight.",
+        thumbnail_url="https://picsum.photos/id/1025/900/900",
+        tags=["nordic", "bright"],
+        room_types=["living_room", "bedroom", "kitchen"],
+        sort_order=40,
+    ),
+    "industrial": StylePreset(
+        style_id="industrial",
+        display_name="Industrial",
+        prompt="Industrial loft style with exposed materials, black metal accents, and cinematic contrast.",
+        thumbnail_url="https://picsum.photos/id/1067/900/900",
+        tags=["loft", "urban"],
+        room_types=["living_room", "home_office", "restaurant"],
+        sort_order=50,
+    ),
+    "japandi": StylePreset(
+        style_id="japandi",
+        display_name="Japandi",
+        prompt="Japandi interior with serene palette, organic forms, low furniture, and tactile natural textures.",
+        thumbnail_url="https://picsum.photos/id/1015/900/900",
+        tags=["calm", "organic"],
+        room_types=["living_room", "bedroom", "home_office"],
+        sort_order=60,
+    ),
+    "rustic": StylePreset(
+        style_id="rustic",
+        display_name="Rustic",
+        prompt="Rustic interior with weathered wood, warm ambient lighting, and handcrafted cozy details.",
+        thumbnail_url="https://picsum.photos/id/1008/900/900",
+        tags=["cozy", "natural"],
+        room_types=["living_room", "dining_room"],
+        sort_order=70,
+    ),
+    "vintage": StylePreset(
+        style_id="vintage",
+        display_name="Vintage",
+        prompt="Vintage-inspired interior with classic silhouettes, rich details, and timeless character.",
+        thumbnail_url="https://picsum.photos/id/1074/900/900",
+        tags=["classic", "heritage"],
+        room_types=["living_room", "study_room", "restaurant"],
+        sort_order=80,
+    ),
+    "christmas": StylePreset(
+        style_id="christmas",
+        display_name="Christmas",
+        prompt="Festive Christmas interior with warm lights, seasonal decor, and cozy holiday atmosphere.",
+        thumbnail_url="https://picsum.photos/id/1041/900/900",
+        tags=["seasonal", "festive"],
+        room_types=["living_room", "exterior"],
+        sort_order=90,
+    ),
+}
+
 
 def bootstrap_product_data() -> None:
     with session_scope() as session:
@@ -75,6 +170,17 @@ def bootstrap_product_data() -> None:
                     )
                 )
 
+        has_styles = session.execute(select(StyleModel.style_id).limit(1)).first()
+        if not has_styles:
+            for style in _DEFAULT_STYLES.values():
+                session.add(
+                    StyleModel(
+                        style_id=style.style_id,
+                        payload_json=style.model_dump(mode="json"),
+                        is_active=style.is_active,
+                    )
+                )
+
 
 def list_plans() -> list[PlanConfig]:
     with session_scope() as session:
@@ -88,6 +194,83 @@ def get_plan(plan_id: str) -> PlanConfig | None:
         if not model:
             return None
         return PlanConfig.model_validate(model.payload_json)
+
+
+def list_styles(active_only: bool = False) -> list[StylePreset]:
+    with session_scope() as session:
+        stmt = select(StyleModel)
+        if active_only:
+            stmt = stmt.where(StyleModel.is_active.is_(True))
+        rows = session.execute(stmt).scalars().all()
+        styles = [StylePreset.model_validate(row.payload_json) for row in rows]
+        return sorted(
+            styles,
+            key=lambda item: (
+                int(item.sort_order or 0),
+                item.display_name.lower(),
+                item.style_id.lower(),
+            ),
+        )
+
+
+def list_active_styles() -> list[StylePreset]:
+    return list_styles(active_only=True)
+
+
+def get_style(style_id: str) -> StylePreset | None:
+    with session_scope() as session:
+        model = session.get(StyleModel, style_id)
+        if not model:
+            return None
+        return StylePreset.model_validate(model.payload_json)
+
+
+def upsert_style(style_id: str, payload: StyleUpsertRequest, action: AdminActionRequest) -> StylePreset:
+    style = StylePreset(style_id=style_id, **payload.model_dump())
+
+    with session_scope() as session:
+        existing = session.get(StyleModel, style_id)
+        if existing:
+            existing.payload_json = style.model_dump(mode="json")
+            existing.is_active = style.is_active
+            existing.updated_at = utc_now()
+        else:
+            session.add(
+                StyleModel(
+                    style_id=style_id,
+                    payload_json=style.model_dump(mode="json"),
+                    is_active=style.is_active,
+                    updated_at=utc_now(),
+                )
+            )
+
+        _append_audit(
+            session=session,
+            action="style_upserted",
+            actor=action.actor,
+            reason=action.reason,
+            metadata={"style_id": style_id},
+        )
+
+    return style
+
+
+def delete_style(style_id: str, action: AdminActionRequest) -> bool:
+    with session_scope() as session:
+        existing = session.get(StyleModel, style_id)
+        if not existing:
+            return False
+
+        session.delete(existing)
+        _append_audit(
+            session=session,
+            action="style_deleted",
+            actor=action.actor,
+            reason=action.reason,
+            metadata={"style_id": style_id},
+        )
+
+    return True
 
 
 def upsert_plan(plan_id: str, payload: PlanUpsertRequest, action: AdminActionRequest) -> PlanConfig:

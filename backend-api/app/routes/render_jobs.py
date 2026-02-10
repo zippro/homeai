@@ -19,7 +19,7 @@ from app.job_store import (
     update_render_job_status,
     upsert_user_project,
 )
-from app.product_store import get_plan, get_variable_map
+from app.product_store import get_plan, get_style, get_variable_map
 from app.providers.registry import get_provider_registry
 from app.render_policy import resolve_credit_cost, should_block_final_without_preview
 from app.router import resolve_model, resolve_provider_candidates
@@ -45,9 +45,17 @@ _TERMINAL_STATUSES = {JobStatus.completed, JobStatus.failed, JobStatus.canceled}
 
 
 def _build_prompt(payload: RenderJobCreateRequest) -> str:
+    style_preset = get_style(payload.style_id)
     parts_csv = ",".join([part.value for part in payload.target_parts])
+    style_prompt = (
+        style_preset.prompt
+        if style_preset and style_preset.prompt
+        else f"Apply {payload.style_id} style to the room."
+    )
+    style_label = style_preset.display_name if style_preset else payload.style_id
     base = (
-        f"Apply {payload.style_id} style for operation={payload.operation.value}; "
+        f"{style_prompt} "
+        f"style_id={payload.style_id}; style_label={style_label}; operation={payload.operation.value}; "
         f"target_parts={parts_csv}; preserve room geometry and lighting consistency."
     )
     if payload.prompt_overrides:

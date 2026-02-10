@@ -49,6 +49,11 @@ class SessionBootstrapRouteTests(unittest.TestCase):
         self.assertIn("catalog", payload)
         self.assertIsInstance(payload["catalog"], list)
         self.assertGreaterEqual(len(payload["catalog"]), 1)
+        self.assertIn("styles", payload)
+        self.assertIsInstance(payload["styles"], list)
+        self.assertGreaterEqual(len(payload["styles"]), 1)
+        self.assertIn("style_id", payload["styles"][0])
+        self.assertIn("prompt", payload["styles"][0])
         self.assertIn("variables", payload)
         self.assertIn("provider_defaults", payload)
         self.assertIn("default_provider", payload["provider_defaults"])
@@ -57,4 +62,3 @@ class SessionBootstrapRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
