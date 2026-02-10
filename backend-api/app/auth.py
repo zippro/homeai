@@ -7,6 +7,7 @@ from fastapi import Header, HTTPException, status
 
 from app.auth_store import resolve_authenticated_user
 from app.auth_utils import parse_bearer_token
+from app.runtime_env import is_production_mode, read_bool_env
 
 
 def get_authenticated_user(authorization: str | None = Header(default=None)) -> str:
@@ -30,9 +31,12 @@ def require_admin_access(
     configured_token = os.getenv("ADMIN_API_TOKEN", "").strip()
     configured_admin_users = _parse_admin_users_env(os.getenv("ADMIN_USER_IDS", ""))
 
-    # Backward-compatible open mode: if no admin auth is configured, allow access.
     if not configured_token and not configured_admin_users:
-        return "open_admin_mode"
+        allow_open_mode_default = not is_production_mode()
+        allow_open_mode = read_bool_env("ALLOW_OPEN_ADMIN_MODE", allow_open_mode_default)
+        if allow_open_mode:
+            return "open_admin_mode"
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="admin_auth_not_configured")
 
     if configured_token and x_admin_token:
         if secrets.compare_digest(x_admin_token, configured_token):

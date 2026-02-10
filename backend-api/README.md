@@ -54,6 +54,7 @@ docker run --rm -p 8000:8000 --env-file .env homeai-backend:local
 - `DATABASE_URL`: defaults to `sqlite:///./app.db`.
   PostgreSQL is supported via URLs like `postgresql+psycopg://user:pass@host:5432/dbname`.
 - `ALLOWED_ORIGINS`: defaults to `*`; comma-separated list for CORS (for example `https://admin.yourdomain.com,http://localhost:4173`).
+- `APP_ENV`: defaults to non-production if unset. Use `production` (or `prod`) in live environments.
 - `FAL_API_KEY`: required for live fal.ai queue calls.
 - `FAL_QUEUE_BASE`: defaults to `https://queue.fal.run`.
 - `FAL_TIMEOUT_SECONDS`: defaults to `45`.
@@ -66,12 +67,13 @@ docker run --rm -p 8000:8000 --env-file .env homeai-backend:local
 - `STORAGE_ACCESS_KEY_ID`: optional if runtime has IAM role.
 - `STORAGE_SECRET_ACCESS_KEY`: optional if runtime has IAM role.
 - `STORAGE_PUBLIC_BASE_URL`: optional CDN/public URL base for returned image URLs.
-- `STOREKIT_WEBHOOK_SECRET`: optional shared secret for `/v1/webhooks/storekit`.
-- `GOOGLE_PLAY_WEBHOOK_SECRET`: optional shared secret for `/v1/webhooks/google-play`.
-- `WEB_BILLING_WEBHOOK_SECRET`: optional shared secret for `/v1/webhooks/web-billing`.
+- `STOREKIT_WEBHOOK_SECRET`: shared secret for `/v1/webhooks/storekit` (required in production).
+- `GOOGLE_PLAY_WEBHOOK_SECRET`: shared secret for `/v1/webhooks/google-play` (required in production).
+- `WEB_BILLING_WEBHOOK_SECRET`: shared secret for `/v1/webhooks/web-billing` (required in production).
 - `WEB_BILLING_CHECKOUT_BASE_URL`: optional base URL for generated web checkout session links.
 - `ADMIN_API_TOKEN`: optional static token for admin endpoints via `X-Admin-Token`.
 - `ADMIN_USER_IDS`: optional comma-separated user IDs allowed on admin endpoints via bearer auth.
+- `ALLOW_OPEN_ADMIN_MODE`: optional override (`true`) to allow admin endpoints without token/user config in production. Keep unset in production unless you intentionally need temporary bootstrap access.
 - `EXPERIMENT_AUTOMATION_NOTIFY_WEBHOOK_URL`: optional webhook URL used by `run_experiment_automation.py`.
 
 ## Key endpoints
@@ -180,9 +182,14 @@ docker run --rm -p 8000:8000 --env-file .env homeai-backend:local
 - SQLAlchemy models are initialized on app startup.
 - For scheduled daily reset, run `python scripts/run_credit_reset_tick.py` from `backend-api` via cron/worker.
 - Admin endpoints auth modes:
-  - open mode (default): if `ADMIN_API_TOKEN` and `ADMIN_USER_IDS` are both unset,
+  - open mode (default in non-production): if `ADMIN_API_TOKEN` and `ADMIN_USER_IDS` are both unset,
+  - production-safe default: with `APP_ENV=production`, unset admin credentials return `401 admin_auth_not_configured`,
+  - production override: set `ALLOW_OPEN_ADMIN_MODE=true` only for temporary bootstrap access,
   - token mode: set `ADMIN_API_TOKEN` and send `X-Admin-Token`,
   - role mode: set `ADMIN_USER_IDS` and send bearer token for an allowed user.
+- Webhook auth behavior:
+  - non-production: webhook routes accept missing secrets (for local/dev smoke flows),
+  - production (`APP_ENV=production`): webhook routes require configured matching secrets.
 - Webhook entitlement reconciliation policy:
   - keep `active` entitlement if a later webhook reports non-active status from another source,
   - if both entitlements are `active`, keep the higher-priced plan,

@@ -1,18 +1,20 @@
-# HomeAI Web App (MVP)
+# HomeAI Web App
 
 Web client for the same backend/account used by iOS and Android.
 
 ## Features implemented
 
-- Dev login/session (`/v1/auth/login-dev`, `/v1/auth/me`, `/v1/auth/logout`)
-- Unified authenticated bootstrap (`/v1/session/bootstrap/me`) for profile/board/experiments/catalog
-- Tools presets + project board (`/v1/projects/board/me`)
-- Create/render flow (`/v1/ai/render-jobs`, poll `/v1/ai/render-jobs/{job_id}`)
-- Discover feed (`/v1/discover/feed`)
-- Profile/credits/entitlement (`/v1/profile/overview/me`)
-- Subscription catalog + web checkout session (`/v1/subscriptions/catalog`, `/v1/subscriptions/web/checkout-session`)
-- Active experiment assignments (`/v1/experiments/active/{user_id}`)
-- Basic analytics events (`/v1/analytics/events`)
+- Mobile-first end-user flow with bottom navigation.
+- 4-step create wizard:
+  - Step 1: image input + preview.
+  - Step 2: room type selection.
+  - Step 3: style selection with thumbnails.
+  - Step 3: custom style creation (name + prompt + thumbnail URL) persisted in browser storage.
+  - Step 4: review + render submission.
+- Render flow on shared backend (`/v1/ai/render-jobs`, poll `/v1/ai/render-jobs/{job_id}`).
+- Unified authenticated bootstrap (`/v1/session/bootstrap/me`) for profile/board/catalog.
+- Discover feed (`/v1/discover/feed`).
+- Subscription catalog + web checkout session (`/v1/subscriptions/catalog`, `/v1/subscriptions/web/checkout-session`).
 
 ## Run locally
 
@@ -35,7 +37,6 @@ Build output: `web-app/dist/`
 
 ## Notes
 
-- This MVP uses image URLs in Create; file upload and storage proxy can be added next.
-- Web checkout currently uses backend-generated checkout URL (configure backend `WEB_BILLING_CHECKOUT_BASE_URL`).
-- On `?checkout=success`, web app auto-refreshes session bootstrap for a few retries to pick up webhook-applied entitlement.
+- Current create flow uses image URL input. If you want direct file upload, add backend upload endpoint and swap Step 1 input.
+- Web checkout uses backend-generated checkout URL (`WEB_BILLING_CHECKOUT_BASE_URL`).
 - For cross-origin calls, backend `ALLOWED_ORIGINS` must include this web app origin.

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HomeAI Deploy Entry</title>
+    <title>HomeAI</title>
     <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -51,11 +51,14 @@
   <body>
     <main class="card">
       <h1>HomeAI</h1>
-      <p>Select the app you want to open.</p>
+      <p>Redirecting to the web app...</p>
       <div class="links">
         <a href="/web-app/index.html">Open Web App</a>
         <a class="secondary" href="/admin-dashboard/index.html">Open Admin Dashboard</a>
       </div>
     </main>
+    <script>
+      window.location.replace("/web-app/index.html");
+    </script>
   </body>
 </html>

@@ -1,102 +1,169 @@
-const STORAGE_KEY = "homeai-web-settings-v1";
-
-const TOOL_PRESETS = [
-  {
-    id: "interior-design",
-    title: "Interior Design",
-    subtitle: "Upload a pic, choose a style, let AI redesign the room.",
-    styleId: "modern",
-    operation: "restyle",
-    beforeImage: "https://picsum.photos/id/1062/960/960",
-    afterImage: "https://picsum.photos/id/1063/960/960",
-  },
-  {
-    id: "exterior-design",
-    title: "Exterior Design",
-    subtitle: "Snap your facade and transform curb appeal.",
-    styleId: "scandi",
-    operation: "restyle",
-    beforeImage: "https://picsum.photos/id/104/960/960",
-    afterImage: "https://picsum.photos/id/105/960/960",
-  },
-  {
-    id: "paint",
-    title: "Paint",
-    subtitle: "Test walls with a new color in seconds.",
-    styleId: "color-refresh",
-    operation: "repaint",
-    beforeImage: "https://picsum.photos/id/1076/960/960",
-    afterImage: "https://picsum.photos/id/1077/960/960",
-  },
-  {
-    id: "floor-restyle",
-    title: "Floor Restyle",
-    subtitle: "Preview flooring materials with instant swaps.",
-    styleId: "oak-floor",
-    operation: "replace",
-    beforeImage: "https://picsum.photos/id/1078/960/960",
-    afterImage: "https://picsum.photos/id/1079/960/960",
-  },
-  {
-    id: "garden-design",
-    title: "Garden Design",
-    subtitle: "Give your backyard a fresh concept.",
-    styleId: "garden-modern",
-    operation: "restyle",
-    beforeImage: "https://picsum.photos/id/101/960/960",
-    afterImage: "https://picsum.photos/id/102/960/960",
-  },
-  {
-    id: "reference-style",
-    title: "Reference Style",
-    subtitle: "Apply a curated style mood across your space.",
-    styleId: "reference-style",
-    operation: "restyle",
-    beforeImage: "https://picsum.photos/id/1035/960/960",
-    afterImage: "https://picsum.photos/id/1039/960/960",
-  },
-];
+const SETTINGS_KEY = "homeai-web-settings-v2";
+const TOKEN_KEY = "homeai-web-token-v2";
+const CUSTOM_STYLES_KEY = "homeai-web-custom-styles-v1";
 
 const TERMINAL_JOB_STATUS = new Set(["completed", "failed", "canceled"]);
+
+const ROOM_OPTIONS = [
+  { id: "kitchen", name: "Kitchen", icon: "🍳" },
+  { id: "living_room", name: "Living Room", icon: "🛋️" },
+  { id: "bedroom", name: "Bedroom", icon: "🛏️" },
+  { id: "bathroom", name: "Bathroom", icon: "🛁" },
+  { id: "dining_room", name: "Dining Room", icon: "🍽️" },
+  { id: "home_office", name: "Home Office", icon: "💻" },
+  { id: "kids_room", name: "Kids Room", icon: "🧸" },
+  { id: "garden", name: "Garden", icon: "🌿" },
+  { id: "coffee_shop", name: "Coffee Shop", icon: "☕" },
+  { id: "restaurant", name: "Restaurant", icon: "🍷" },
+];
+
+const DEFAULT_STYLES = [
+  {
+    id: "modern",
+    name: "Modern",
+    prompt: "Modern clean interior, balanced composition, natural light, premium materials.",
+    thumbnail: "https://picsum.photos/id/1068/900/900",
+  },
+  {
+    id: "minimalistic",
+    name: "Minimalistic",
+    prompt: "Minimalist interior, uncluttered surfaces, neutral palette, calm and airy mood.",
+    thumbnail: "https://picsum.photos/id/1059/900/900",
+  },
+  {
+    id: "bohemian",
+    name: "Bohemian",
+    prompt: "Bohemian interior with layered textures, handcrafted decor, warm earthy tones.",
+    thumbnail: "https://picsum.photos/id/1044/900/900",
+  },
+  {
+    id: "tropical",
+    name: "Tropical",
+    prompt: "Tropical style with lush plants, breezy palette, bright daylight and natural woods.",
+    thumbnail: "https://picsum.photos/id/1018/900/900",
+  },
+  {
+    id: "rustic",
+    name: "Rustic",
+    prompt: "Rustic interior with aged wood, cozy lighting, handcrafted details and timeless warmth.",
+    thumbnail: "https://picsum.photos/id/1008/900/900",
+  },
+  {
+    id: "vintage",
+    name: "Vintage",
+    prompt: "Vintage-inspired room, classic furniture silhouettes, rich details and soft filmic mood.",
+    thumbnail: "https://picsum.photos/id/1074/900/900",
+  },
+  {
+    id: "baroque",
+    name: "Baroque",
+    prompt: "Baroque luxury interior, ornate accents, dramatic lighting, rich textures and depth.",
+    thumbnail: "https://picsum.photos/id/1080/900/900",
+  },
+  {
+    id: "scandinavian",
+    name: "Scandinavian",
+    prompt: "Scandinavian design with white walls, warm oak, functional furniture and soft daylight.",
+    thumbnail: "https://picsum.photos/id/1025/900/900",
+  },
+  {
+    id: "industrial",
+    name: "Industrial",
+    prompt: "Industrial loft with exposed materials, black metal accents and cinematic contrast.",
+    thumbnail: "https://picsum.photos/id/1067/900/900",
+  },
+  {
+    id: "japandi",
+    name: "Japandi",
+    prompt: "Japandi room with serene palette, organic forms, low furniture and tactile textures.",
+    thumbnail: "https://picsum.photos/id/1015/900/900",
+  },
+  {
+    id: "christmas",
+    name: "Christmas",
+    prompt: "Festive Christmas interior, warm ambient lights, seasonal decor and cozy atmosphere.",
+    thumbnail: "https://picsum.photos/id/1041/900/900",
+  },
+];
 
 const state = {
   apiBaseUrl: "http://localhost:8000",
   userId: "homeai_demo_user",
   token: "",
   currentTab: "tools",
+  createStep: 1,
+  selectedRoomId: "",
+  selectedStyleId: "modern",
+  customStyles: [],
   discoverTab: "",
   me: null,
   profile: null,
-  experimentAssignments: [],
-  catalog: [],
   board: [],
   discoverFeed: null,
+  catalog: [],
   currentJob: null,
   pollHandle: null,
 };
 
 const refs = {
+  settingsToggle: document.getElementById("settingsToggle"),
+  connectionPanel: document.getElementById("connectionPanel"),
   apiBaseUrl: document.getElementById("apiBaseUrl"),
   userId: document.getElementById("userId"),
+  loginButton: document.getElementById("loginButton"),
+  logoutButton: document.getElementById("logoutButton"),
+  refreshButton: document.getElementById("refreshButton"),
   authState: document.getElementById("authState"),
   creditState: document.getElementById("creditState"),
   planState: document.getElementById("planState"),
   tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
-  panels: Array.from(document.querySelectorAll(".panel")),
-  toolsGrid: document.getElementById("toolsGrid"),
+  panels: {
+    tools: document.getElementById("panel-tools"),
+    create: document.getElementById("panel-create"),
+    discover: document.getElementById("panel-discover"),
+    profile: document.getElementById("panel-profile"),
+  },
+  jumpToCreate: document.getElementById("jumpToCreate"),
   boardGrid: document.getElementById("boardGrid"),
   boardEmpty: document.getElementById("boardEmpty"),
+  createStepLabel: document.getElementById("createStepLabel"),
+  stepDots: [
+    document.getElementById("stepDot1"),
+    document.getElementById("stepDot2"),
+    document.getElementById("stepDot3"),
+    document.getElementById("stepDot4"),
+  ],
+  createSteps: [
+    document.getElementById("createStep1"),
+    document.getElementById("createStep2"),
+    document.getElementById("createStep3"),
+    document.getElementById("createStep4"),
+  ],
+  wizardBack: document.getElementById("wizardBack"),
+  wizardNext: document.getElementById("wizardNext"),
+  wizardClose: document.getElementById("wizardClose"),
   imageUrl: document.getElementById("imageUrl"),
+  imagePreviewCard: document.getElementById("imagePreviewCard"),
+  loadDemoImage: document.getElementById("loadDemoImage"),
+  roomOptions: document.getElementById("roomOptions"),
+  styleGrid: document.getElementById("styleGrid"),
+  customStyleForm: document.getElementById("customStyleForm"),
+  customStyleName: document.getElementById("customStyleName"),
+  customStylePrompt: document.getElementById("customStylePrompt"),
+  customStyleThumb: document.getElementById("customStyleThumb"),
+  createSummary: document.getElementById("createSummary"),
+  renderForm: document.getElementById("renderForm"),
   projectId: document.getElementById("projectId"),
-  styleId: document.getElementById("styleId"),
   operation: document.getElementById("operation"),
   tier: document.getElementById("tier"),
-  promptOverrides: document.getElementById("promptOverrides"),
+  targetPart: document.getElementById("targetPart"),
+  extraPrompt: document.getElementById("extraPrompt"),
   jobResult: document.getElementById("jobResult"),
   discoverTabs: document.getElementById("discoverTabs"),
   discoverSections: document.getElementById("discoverSections"),
   profileSummary: document.getElementById("profileSummary"),
-  catalogTableBody: document.getElementById("catalogTableBody"),
+  catalogCards: document.getElementById("catalogCards"),
+  checkoutForm: document.getElementById("checkoutForm"),
   checkoutPlanId: document.getElementById("checkoutPlanId"),
   successUrl: document.getElementById("successUrl"),
   cancelUrl: document.getElementById("cancelUrl"),
@@ -112,26 +179,119 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function log(message, level = "INFO") {
   const timestamp = new Date().toLocaleTimeString();
   const current = refs.activityLog.textContent === "Waiting for actions..." ? "" : refs.activityLog.textContent;
   const line = `[${timestamp}] [${level}] ${message}`;
-  const merged = current ? `${line}\n${current}` : line;
-  refs.activityLog.textContent = merged.split("\n").slice(0, 150).join("\n");
+  refs.activityLog.textContent = current ? `${line}\n${current}` : line;
 }
 
-function normalizeBaseUrl(rawValue) {
-  return rawValue.trim().replace(/\/+$/, "");
+function normalizeBaseUrl(raw) {
+  return raw.trim().replace(/\/+$/, "");
 }
 
-function readInputsToState() {
+function readConnectionInputs() {
   state.apiBaseUrl = normalizeBaseUrl(refs.apiBaseUrl.value || "");
   state.userId = refs.userId.value.trim();
 }
 
-function syncInputsFromState() {
+function syncConnectionInputs() {
   refs.apiBaseUrl.value = state.apiBaseUrl;
   refs.userId.value = state.userId;
+}
+
+function saveConnectionSettings() {
+  localStorage.setItem(
+    SETTINGS_KEY,
+    JSON.stringify({
+      apiBaseUrl: state.apiBaseUrl,
+      userId: state.userId,
+      currentTab: state.currentTab,
+      selectedRoomId: state.selectedRoomId,
+      selectedStyleId: state.selectedStyleId,
+    }),
+  );
+}
+
+function loadConnectionSettings() {
+  const raw = localStorage.getItem(SETTINGS_KEY);
+  if (!raw) {
+    syncConnectionInputs();
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    state.apiBaseUrl = normalizeBaseUrl(parsed.apiBaseUrl || state.apiBaseUrl);
+    state.userId = parsed.userId || state.userId;
+    state.currentTab = parsed.currentTab || state.currentTab;
+    state.selectedRoomId = parsed.selectedRoomId || "";
+    state.selectedStyleId = parsed.selectedStyleId || state.selectedStyleId;
+  } catch (error) {
+    log(`Failed to load connection settings: ${error.message}`, "ERROR");
+  }
+  syncConnectionInputs();
+}
+
+function saveToken(token) {
+  state.token = token || "";
+  if (state.token) {
+    sessionStorage.setItem(TOKEN_KEY, state.token);
+  } else {
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+function loadToken() {
+  saveToken(sessionStorage.getItem(TOKEN_KEY) || "");
+}
+
+function saveCustomStyles() {
+  localStorage.setItem(CUSTOM_STYLES_KEY, JSON.stringify(state.customStyles));
+}
+
+function loadCustomStyles() {
+  const raw = localStorage.getItem(CUSTOM_STYLES_KEY);
+  if (!raw) {
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      state.customStyles = parsed
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({
+          id: String(item.id || ""),
+          name: String(item.name || ""),
+          prompt: String(item.prompt || ""),
+          thumbnail: String(item.thumbnail || ""),
+          custom: true,
+        }))
+        .filter((item) => item.id && item.name && item.prompt && item.thumbnail);
+    }
+  } catch (error) {
+    log(`Failed to load custom styles: ${error.message}`, "ERROR");
+  }
+}
+
+function getAllStyles() {
+  return [...DEFAULT_STYLES, ...state.customStyles];
+}
+
+function getSelectedStyle() {
+  const styles = getAllStyles();
+  return styles.find((item) => item.id === state.selectedStyleId) || styles[0] || null;
+}
+
+function getSelectedRoom() {
+  return ROOM_OPTIONS.find((item) => item.id === state.selectedRoomId) || null;
 }
 
 function setDefaultCheckoutUrls() {
@@ -140,38 +300,10 @@ function setDefaultCheckoutUrls() {
   refs.cancelUrl.value = `${base}?checkout=cancel`;
 }
 
-function saveSessionSettings() {
-  const payload = {
-    apiBaseUrl: state.apiBaseUrl,
-    userId: state.userId,
-    token: state.token,
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-}
-
-function loadSessionSettings() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    syncInputsFromState();
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    state.apiBaseUrl = normalizeBaseUrl(parsed.apiBaseUrl || state.apiBaseUrl);
-    state.userId = parsed.userId || state.userId;
-    state.token = parsed.token || "";
-  } catch (error) {
-    log(`Failed to read saved session: ${error.message}`, "ERROR");
-  }
-  syncInputsFromState();
-}
-
 async function apiRequest(path, { method = "GET", body = undefined, authRequired = true } = {}) {
   if (!state.apiBaseUrl) {
     throw new Error("API Base URL is required.");
   }
-
   if (authRequired && !state.token) {
     throw new Error("Login is required for this action.");
   }
@@ -216,80 +348,121 @@ async function trackEvent(eventName, extra = {}) {
       },
     });
   } catch {
-    // Do not block UX when analytics endpoint is unavailable.
+    // Never block UX due to analytics transport.
   }
 }
 
-function setTab(tabName) {
-  state.currentTab = tabName;
+function setTab(tab) {
+  state.currentTab = tab;
   for (const button of refs.tabButtons) {
-    button.classList.toggle("active", button.dataset.tab === tabName);
+    button.classList.toggle("active", button.dataset.tab === tab);
   }
-  for (const panel of refs.panels) {
-    panel.classList.toggle("active", panel.id === `panel-${tabName}`);
+  for (const [name, panel] of Object.entries(refs.panels)) {
+    panel.classList.toggle("active", name === tab);
   }
+  saveConnectionSettings();
 }
 
 function renderStatusPills() {
   if (state.token && state.me) {
     refs.authState.textContent = `Auth: ${state.me.user_id}`;
   } else if (state.token) {
-    refs.authState.textContent = `Auth: token saved`;
+    refs.authState.textContent = "Auth: token ready";
   } else {
     refs.authState.textContent = "Auth: logged out";
   }
-
-  const balance = state.profile?.credits?.balance;
-  refs.creditState.textContent = typeof balance === "number" ? `Credits: ${balance}` : "Credits: -";
-
-  const planName = state.profile?.effective_plan?.display_name || "-";
-  refs.planState.textContent = `Plan: ${planName}`;
+  refs.creditState.textContent =
+    typeof state.profile?.credits?.balance === "number" ? `Credits: ${state.profile.credits.balance}` : "Credits: -";
+  refs.planState.textContent = `Plan: ${state.profile?.effective_plan?.display_name || "-"}`;
 }
 
-function renderTools() {
-  refs.toolsGrid.innerHTML = TOOL_PRESETS.map((tool) => {
-    return `<article class="tool-card">
-      <div class="tool-images">
-        <img src="${escapeHtml(tool.beforeImage)}" alt="${escapeHtml(tool.title)} before" />
-        <img src="${escapeHtml(tool.afterImage)}" alt="${escapeHtml(tool.title)} after" />
-      </div>
-      <div class="tool-content">
-        <h4>${escapeHtml(tool.title)}</h4>
-        <p>${escapeHtml(tool.subtitle)}</p>
-        <button
-          type="button"
-          class="btn btn-primary"
-          data-tool-try="1"
-          data-style="${escapeHtml(tool.styleId)}"
-          data-operation="${escapeHtml(tool.operation)}"
-          data-image="${escapeHtml(tool.beforeImage)}"
-        >
-          Try It
-        </button>
-      </div>
-    </article>`;
-  }).join("");
-
+function renderBoard() {
   if (!Array.isArray(state.board) || state.board.length === 0) {
     refs.boardGrid.innerHTML = "";
     refs.boardEmpty.classList.remove("hidden");
     return;
   }
-
   refs.boardEmpty.classList.add("hidden");
   refs.boardGrid.innerHTML = state.board
     .map((item) => {
-      const image = item.last_output_url || item.cover_image_url || "https://picsum.photos/id/1084/900/700";
+      const image = item.last_output_url || item.cover_image_url || "https://picsum.photos/id/1008/900/700";
       return `<article class="board-card">
         <img src="${escapeHtml(image)}" alt="${escapeHtml(item.project_id)}" />
-        <div class="board-content">
+        <div class="board-copy">
           <p><strong>${escapeHtml(item.project_id)}</strong></p>
-          <small>Status: ${escapeHtml(item.last_status || "-")}</small>
-          <small>Generations: ${escapeHtml(item.generation_count || 0)}</small>
+          <small>Status: ${escapeHtml(item.last_status || "-")} | Generations: ${escapeHtml(item.generation_count || 0)}</small>
         </div>
       </article>`;
     })
     .join("");
+}
+
+function renderRoomOptions() {
+  refs.roomOptions.innerHTML = ROOM_OPTIONS.map((room) => {
+    const activeClass = room.id === state.selectedRoomId ? "active" : "";
+    return `<button type="button" class="room-btn ${activeClass}" data-room-id="${escapeHtml(room.id)}">${escapeHtml(
+      room.icon,
+    )} ${escapeHtml(room.name)}</button>`;
+  }).join("");
+}
+
+function renderStyles() {
+  const selected = state.selectedStyleId;
+  refs.styleGrid.innerHTML = getAllStyles()
+    .map((style) => {
+      const isActive = style.id === selected;
+      const activeClass = isActive ? "active" : "";
+      const customClass = style.custom ? "custom" : "";
+      const deleteButton = style.custom
+        ? `<button type="button" class="delete" data-delete-style-id="${escapeHtml(style.id)}">Delete</button>`
+        : "";
+      return `<article class="style-card ${activeClass} ${customClass}" data-style-id="${escapeHtml(style.id)}">
+        <img src="${escapeHtml(style.thumbnail)}" alt="${escapeHtml(style.name)} thumbnail" />
+        <div class="copy">
+          <h4>${escapeHtml(style.name)}</h4>
+          <p>${escapeHtml(style.prompt)}</p>
+          ${deleteButton}
+        </div>
+      </article>`;
+    })
+    .join("");
+}
+
+function renderImagePreview() {
+  const url = refs.imageUrl.value.trim();
+  if (!url) {
+    refs.imagePreviewCard.innerHTML = '<p class="muted">Image preview appears here.</p>';
+    return;
+  }
+  refs.imagePreviewCard.innerHTML = `<img src="${escapeHtml(url)}" alt="Input preview" />`;
+}
+
+function renderCreateSummary() {
+  const selectedRoom = getSelectedRoom();
+  const selectedStyle = getSelectedStyle();
+  const imageUrl = refs.imageUrl.value.trim();
+  refs.createSummary.innerHTML = [
+    `<p class="summary-line"><span>Image:</span> <strong>${escapeHtml(imageUrl || "-")}</strong></p>`,
+    `<p class="summary-line"><span>Room:</span> <strong>${escapeHtml(selectedRoom?.name || "-")}</strong></p>`,
+    `<p class="summary-line"><span>Style:</span> <strong>${escapeHtml(selectedStyle?.name || "-")}</strong></p>`,
+    `<p class="summary-line"><span>Style Prompt:</span> <strong>${escapeHtml(selectedStyle?.prompt || "-")}</strong></p>`,
+  ].join("");
+}
+
+function setCreateStep(step) {
+  state.createStep = Math.min(Math.max(step, 1), 4);
+  refs.createStepLabel.textContent = `Step ${state.createStep} / 4`;
+  refs.createSteps.forEach((section, index) => {
+    section.classList.toggle("active", index + 1 === state.createStep);
+  });
+  refs.stepDots.forEach((dot, index) => {
+    dot.classList.toggle("active", index + 1 <= state.createStep);
+  });
+  refs.wizardBack.disabled = state.createStep === 1;
+  refs.wizardNext.textContent = state.createStep === 4 ? "Generate Design" : "Continue";
+  if (state.createStep === 4) {
+    renderCreateSummary();
+  }
 }
 
 function renderJobResult() {
@@ -298,51 +471,32 @@ function renderJobResult() {
     refs.jobResult.innerHTML = '<p class="muted">No render job yet.</p>';
     return;
   }
-
   const output = job.output_url
-    ? `<img class="job-output" src="${escapeHtml(job.output_url)}" alt="Rendered output" />`
-    : '<p class="muted">No output yet. Polling while job is running.</p>';
+    ? `<img src="${escapeHtml(job.output_url)}" alt="Rendered output" />`
+    : '<p class="muted">Rendering in progress. Keep this page open.</p>';
   refs.jobResult.innerHTML = `<p class="job-meta"><strong>${escapeHtml(job.id)}</strong></p>
     <p class="job-meta">Status: ${escapeHtml(job.status)} | Provider: ${escapeHtml(job.provider || "-")}</p>
-    <p class="job-meta">Model: ${escapeHtml(job.provider_model || "-")} | Est Cost: $${Number(job.estimated_cost_usd || 0).toFixed(4)}</p>
-    <div class="job-grid">
-      <div>${output}</div>
-      <div>
-        <p class="job-meta">Updated: ${escapeHtml(job.updated_at ? new Date(job.updated_at).toLocaleString() : "-")}</p>
-        <p class="job-meta">Error: ${escapeHtml(job.error_code || "-")}</p>
-        <button id="pollNowButton" type="button" class="btn">Poll Now</button>
-      </div>
-    </div>`;
-
-  const pollNowButton = document.getElementById("pollNowButton");
-  if (pollNowButton) {
-    pollNowButton.addEventListener("click", async () => {
-      if (!state.currentJob?.id) {
-        return;
-      }
-      try {
-        await pollRenderJob(state.currentJob.id);
-      } catch (error) {
-        log(`Polling failed: ${error.message}`, "ERROR");
-      }
-    });
-  }
+    <p class="job-meta">Model: ${escapeHtml(job.provider_model || "-")} | Est. Cost: $${Number(
+      job.estimated_cost_usd || 0,
+    ).toFixed(4)}</p>
+    ${output}`;
 }
 
 function renderDiscover() {
   const tabs = state.discoverFeed?.tabs || [];
-  const activeTab = state.discoverTab || "";
   refs.discoverTabs.innerHTML = [
-    `<button type="button" class="discover-pill ${activeTab === "" ? "active" : ""}" data-discover-tab="">All</button>`,
+    `<button type="button" class="discover-pill ${state.discoverTab === "" ? "active" : ""}" data-discover-tab="">All</button>`,
     ...tabs.map((tab) => {
-      const isActive = tab.toLowerCase() === activeTab.toLowerCase();
-      return `<button type="button" class="discover-pill ${isActive ? "active" : ""}" data-discover-tab="${escapeHtml(tab)}">${escapeHtml(tab)}</button>`;
+      const isActive = tab.toLowerCase() === state.discoverTab.toLowerCase();
+      return `<button type="button" class="discover-pill ${isActive ? "active" : ""}" data-discover-tab="${escapeHtml(
+        tab,
+      )}">${escapeHtml(tab)}</button>`;
     }),
   ].join("");
 
   const sections = state.discoverFeed?.sections || [];
   if (sections.length === 0) {
-    refs.discoverSections.innerHTML = '<p class="empty-text">No discover items for this category.</p>';
+    refs.discoverSections.innerHTML = '<p class="empty-text">No discover items found.</p>';
     return;
   }
 
@@ -350,17 +504,17 @@ function renderDiscover() {
     .map((section) => {
       const items = section.items || [];
       return `<article class="discover-group">
-        <h3>${escapeHtml(section.title)}</h3>
+        <h4>${escapeHtml(section.title)}</h4>
         <div class="discover-items">
           ${items
             .map((item) => {
               return `<article class="discover-card">
-                <div class="pair">
+                <div class="discover-pair">
                   <img src="${escapeHtml(item.before_image_url)}" alt="${escapeHtml(item.title)} before" />
                   <img src="${escapeHtml(item.after_image_url)}" alt="${escapeHtml(item.title)} after" />
                 </div>
-                <div class="copy">
-                  <h4>${escapeHtml(item.title)}</h4>
+                <div class="discover-copy">
+                  <h5>${escapeHtml(item.title)}</h5>
                   <p>${escapeHtml(item.subtitle)}</p>
                 </div>
               </article>`;
@@ -374,84 +528,63 @@ function renderDiscover() {
 
 function renderCatalog() {
   if (!Array.isArray(state.catalog) || state.catalog.length === 0) {
-    refs.catalogTableBody.innerHTML = '<tr><td colspan="5">No active plans found.</td></tr>';
+    refs.catalogCards.innerHTML = '<p class="empty-text">No active plans.</p>';
     refs.checkoutPlanId.innerHTML = "";
     return;
   }
-
-  refs.catalogTableBody.innerHTML = state.catalog
+  refs.catalogCards.innerHTML = state.catalog
     .map((plan) => {
-      return `<tr>
-        <td>${escapeHtml(plan.display_name)}<br /><small>${escapeHtml(plan.plan_id)}</small></td>
-        <td>${escapeHtml(plan.daily_credits)}</td>
-        <td>${escapeHtml(plan.preview_cost_credits)}</td>
-        <td>${escapeHtml(plan.final_cost_credits)}</td>
-        <td>$${Number(plan.monthly_price_usd || 0).toFixed(2)}</td>
-      </tr>`;
+      return `<article class="catalog-card">
+        <h4>${escapeHtml(plan.display_name)}</h4>
+        <p>${escapeHtml(plan.plan_id)} | $${Number(plan.monthly_price_usd || 0).toFixed(2)}/month</p>
+        <p>${escapeHtml(plan.daily_credits)} credits/day • preview ${escapeHtml(
+          plan.preview_cost_credits,
+        )} • final ${escapeHtml(plan.final_cost_credits)}</p>
+      </article>`;
     })
     .join("");
 
-  const selected = refs.checkoutPlanId.value;
+  const previous = refs.checkoutPlanId.value;
   refs.checkoutPlanId.innerHTML = state.catalog
-    .map((plan) => `<option value="${escapeHtml(plan.plan_id)}">${escapeHtml(plan.display_name)} (${escapeHtml(plan.plan_id)})</option>`)
+    .map((plan) => `<option value="${escapeHtml(plan.plan_id)}">${escapeHtml(plan.display_name)}</option>`)
     .join("");
-  if (selected && state.catalog.some((plan) => plan.plan_id === selected)) {
-    refs.checkoutPlanId.value = selected;
+  if (previous && state.catalog.some((plan) => plan.plan_id === previous)) {
+    refs.checkoutPlanId.value = previous;
   }
 }
 
 function renderProfile() {
   if (!state.token || !state.profile) {
-    refs.profileSummary.innerHTML = '<p class="muted">Login first to load profile and subscription data.</p>';
+    refs.profileSummary.innerHTML = '<p class="profile-line"><span>Login to see your profile.</span></p>';
     return;
   }
-
-  const entitlement = state.profile.entitlement || {};
-  refs.profileSummary.innerHTML = `<div class="summary-grid">
-    <article class="summary-metric">
-      <p>User</p>
-      <strong>${escapeHtml(state.profile.user_id || "-")}</strong>
-    </article>
-    <article class="summary-metric">
-      <p>Credits</p>
-      <strong>${escapeHtml(state.profile.credits?.balance || 0)}</strong>
-    </article>
-    <article class="summary-metric">
-      <p>Plan</p>
-      <strong>${escapeHtml(state.profile.effective_plan?.display_name || "-")}</strong>
-    </article>
-    <article class="summary-metric">
-      <p>Entitlement Status</p>
-      <strong>${escapeHtml(entitlement.status || "-")}</strong>
-    </article>
-    <article class="summary-metric">
-      <p>Entitlement Source</p>
-      <strong>${escapeHtml(entitlement.source || "-")}</strong>
-    </article>
-    <article class="summary-metric">
-      <p>Next Credit Reset</p>
-      <strong>${escapeHtml(state.profile.next_credit_reset_at ? new Date(state.profile.next_credit_reset_at).toLocaleString() : "-")}</strong>
-    </article>
-  </div>`;
-
-  if (state.experimentAssignments.length > 0) {
-    const assignmentMarkup = state.experimentAssignments
-      .map(
-        (item) =>
-          `<li>${escapeHtml(item.experiment_id)} -> ${escapeHtml(item.variant_id)} (${item.from_cache ? "cached" : "new"})</li>`,
-      )
-      .join("");
-    refs.profileSummary.innerHTML += `<div class="section-head"><h3>Active Experiments</h3></div><ul class="list">${assignmentMarkup}</ul>`;
-  }
+  refs.profileSummary.innerHTML = [
+    `<p class="profile-line"><span>User:</span> <strong>${escapeHtml(state.profile.user_id || "-")}</strong></p>`,
+    `<p class="profile-line"><span>Credits:</span> <strong>${escapeHtml(state.profile.credits?.balance || 0)}</strong></p>`,
+    `<p class="profile-line"><span>Plan:</span> <strong>${escapeHtml(
+      state.profile.effective_plan?.display_name || "-",
+    )}</strong></p>`,
+    `<p class="profile-line"><span>Status:</span> <strong>${escapeHtml(
+      state.profile.entitlement?.status || "-",
+    )}</strong></p>`,
+    `<p class="profile-line"><span>Source:</span> <strong>${escapeHtml(
+      state.profile.entitlement?.source || "-",
+    )}</strong></p>`,
+  ].join("");
 }
 
 function renderAll() {
   renderStatusPills();
-  renderTools();
+  renderBoard();
+  renderRoomOptions();
+  renderStyles();
+  renderImagePreview();
+  renderCreateSummary();
   renderJobResult();
   renderDiscover();
   renderCatalog();
   renderProfile();
+  setCreateStep(state.createStep);
 }
 
 function stopPolling() {
@@ -465,11 +598,9 @@ async function pollRenderJob(jobId) {
   const status = await apiRequest(`/v1/ai/render-jobs/${encodeURIComponent(jobId)}`, { authRequired: true });
   state.currentJob = status;
   renderJobResult();
-
   if (TERMINAL_JOB_STATUS.has(status.status)) {
     stopPolling();
-    log(`Render job ${jobId} completed with status=${status.status}.`);
-    await trackEvent("web_render_terminal", { status: status.status });
+    log(`Render finished: ${status.status}`);
     await refreshAuthenticatedData();
     renderAll();
   }
@@ -479,8 +610,8 @@ function startPolling(jobId) {
   stopPolling();
   state.pollHandle = setInterval(() => {
     void pollRenderJob(jobId).catch((error) => {
-      log(`Polling failed: ${error.message}`, "ERROR");
       stopPolling();
+      log(`Polling failed: ${error.message}`, "ERROR");
     });
   }, 2500);
 }
@@ -499,80 +630,148 @@ async function refreshAuthenticatedData() {
   const bootstrap = await apiRequest("/v1/session/bootstrap/me?board_limit=30&experiment_limit=50", {
     authRequired: true,
   });
-
   state.me = bootstrap.me || null;
-  if (state.me?.user_id && state.userId !== state.me.user_id) {
-    state.userId = state.me.user_id;
-    syncInputsFromState();
-    saveSessionSettings();
-    log(`Active session belongs to ${state.userId}.`);
-  }
   state.profile = bootstrap.profile || null;
   state.board = bootstrap.board?.projects || [];
-  state.experimentAssignments = bootstrap.experiments?.assignments || [];
   if (Array.isArray(bootstrap.catalog)) {
     state.catalog = bootstrap.catalog;
+  }
+  if (state.me?.user_id && state.userId !== state.me.user_id) {
+    state.userId = state.me.user_id;
+    syncConnectionInputs();
+    saveConnectionSettings();
   }
 }
 
 async function refreshAllData() {
-  readInputsToState();
-  saveSessionSettings();
-
-  await loadDiscover(state.discoverTab);
-
+  readConnectionInputs();
+  saveConnectionSettings();
+  await Promise.all([loadDiscover(state.discoverTab), loadCatalog()]);
   if (state.token) {
     await refreshAuthenticatedData();
   } else {
-    await loadCatalog();
     state.me = null;
     state.profile = null;
     state.board = [];
-    state.experimentAssignments = [];
   }
 }
 
-async function syncAfterCheckoutReturn(checkoutState) {
+function validateCreateStep(step) {
+  if (step === 1) {
+    const imageUrl = refs.imageUrl.value.trim();
+    if (!imageUrl) {
+      log("Step 1: image URL is required.", "ERROR");
+      return false;
+    }
+  }
+  if (step === 2) {
+    if (!state.selectedRoomId) {
+      log("Step 2: choose a room.", "ERROR");
+      return false;
+    }
+  }
+  if (step === 3) {
+    if (!getSelectedStyle()) {
+      log("Step 3: choose a style.", "ERROR");
+      return false;
+    }
+  }
+  return true;
+}
+
+async function submitRender() {
+  readConnectionInputs();
   if (!state.token) {
-    log(`Checkout returned with state=${checkoutState}, but no active session token was found.`, "ERROR");
+    log("Login first to generate renders.", "ERROR");
+    return;
+  }
+  const style = getSelectedStyle();
+  const room = getSelectedRoom();
+  if (!style || !room) {
+    log("Room and style must be selected before generating.", "ERROR");
     return;
   }
 
-  const maxAttempts = checkoutState === "success" ? 5 : 1;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      await refreshAllData();
-      renderAll();
-      const entitlementStatus = state.profile?.entitlement?.status || "-";
-      const entitlementSource = state.profile?.entitlement?.source || "-";
-      log(
-        `Checkout ${checkoutState} sync ${attempt}/${maxAttempts}: entitlement=${entitlementStatus}, source=${entitlementSource}.`,
-      );
+  const projectId = refs.projectId.value.trim() || `web_${Date.now()}`;
+  refs.projectId.value = projectId;
 
-      if (checkoutState !== "success" || entitlementStatus === "active") {
-        return;
-      }
-    } catch (error) {
-      log(`Checkout ${checkoutState} sync attempt ${attempt} failed: ${error.message}`, "ERROR");
-    }
+  const promptOverrides = {
+    room_type: room.id,
+    style_name: style.name,
+    style_prompt: style.prompt,
+  };
+  const extraPrompt = refs.extraPrompt.value.trim();
+  if (extraPrompt) {
+    promptOverrides.user_prompt = extraPrompt;
+  }
 
-    if (attempt < maxAttempts) {
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, 3000);
-      });
+  const payload = {
+    user_id: state.userId,
+    platform: "web",
+    project_id: projectId,
+    image_url: refs.imageUrl.value.trim(),
+    style_id: style.id,
+    operation: refs.operation.value,
+    tier: refs.tier.value,
+    target_parts: [refs.targetPart.value],
+    prompt_overrides: promptOverrides,
+  };
+
+  try {
+    const job = await apiRequest("/v1/ai/render-jobs", {
+      method: "POST",
+      authRequired: true,
+      body: payload,
+    });
+    state.currentJob = job;
+    renderJobResult();
+    log(`Render started: ${job.id}`);
+    if (!TERMINAL_JOB_STATUS.has(job.status)) {
+      startPolling(job.id);
     }
+    await trackEvent("web_render_submitted", { operation: payload.operation, tier: payload.tier });
+  } catch (error) {
+    log(`Render failed: ${error.message}`, "ERROR");
+  }
+}
+
+async function handleCheckoutSubmit(event) {
+  event.preventDefault();
+  if (!state.token) {
+    log("Login first to start checkout.", "ERROR");
+    return;
+  }
+  const planId = refs.checkoutPlanId.value;
+  if (!planId) {
+    log("No plan selected.", "ERROR");
+    return;
+  }
+  try {
+    const session = await apiRequest("/v1/subscriptions/web/checkout-session", {
+      method: "POST",
+      authRequired: true,
+      body: {
+        user_id: state.userId,
+        plan_id: planId,
+        success_url: refs.successUrl.value,
+        cancel_url: refs.cancelUrl.value,
+      },
+    });
+    window.open(session.checkout_url, "_blank", "noopener,noreferrer");
+    log(`Checkout opened for ${planId}.`);
+  } catch (error) {
+    log(`Checkout failed: ${error.message}`, "ERROR");
   }
 }
 
 async function handleLogin() {
-  readInputsToState();
+  readConnectionInputs();
   if (!state.userId) {
-    log("User ID is required.", "ERROR");
+    log("User ID is required for login.", "ERROR");
     return;
   }
-
   try {
-    const response = await apiRequest("/v1/auth/login-dev", {
+    const login = await apiRequest("/v1/auth/login-dev", {
       method: "POST",
       authRequired: false,
       body: {
@@ -581,11 +780,10 @@ async function handleLogin() {
         ttl_hours: 24 * 30,
       },
     });
-    state.token = response.access_token;
-    saveSessionSettings();
+    saveToken(login.access_token);
     await refreshAllData();
     renderAll();
-    log(`Logged in as ${state.userId}.`);
+    log(`Logged in as ${state.userId}`);
     await trackEvent("web_login_success");
   } catch (error) {
     log(`Login failed: ${error.message}`, "ERROR");
@@ -600,150 +798,71 @@ async function handleLogout() {
   } catch (error) {
     log(`Logout warning: ${error.message}`, "ERROR");
   } finally {
-    state.token = "";
+    stopPolling();
+    saveToken("");
     state.me = null;
     state.profile = null;
     state.board = [];
-    state.experimentAssignments = [];
     state.currentJob = null;
-    stopPolling();
-    saveSessionSettings();
     renderAll();
     log("Logged out.");
   }
 }
 
-async function handleRenderSubmit(event) {
+function addCustomStyle(event) {
   event.preventDefault();
-  readInputsToState();
-  if (!state.token) {
-    log("Login first to create render jobs.", "ERROR");
+  const name = refs.customStyleName.value.trim();
+  const prompt = refs.customStylePrompt.value.trim();
+  const thumbnail = refs.customStyleThumb.value.trim();
+  if (!name || !prompt || !thumbnail) {
+    log("Custom style needs name, prompt and thumbnail URL.", "ERROR");
     return;
   }
+  const baseSlug = slugify(name) || "custom-style";
+  const id = `custom-${baseSlug}-${Date.now().toString(36).slice(-4)}`;
+  state.customStyles.unshift({
+    id,
+    name,
+    prompt,
+    thumbnail,
+    custom: true,
+  });
+  state.selectedStyleId = id;
+  saveCustomStyles();
+  refs.customStyleForm.reset();
+  renderStyles();
+  renderCreateSummary();
+  saveConnectionSettings();
+  log(`Custom style added: ${name}`);
+}
 
-  const selectedParts = Array.from(document.querySelectorAll('input[name="targetPart"]:checked')).map((input) => input.value);
-  if (selectedParts.length === 0) {
-    log("Select at least one target part.", "ERROR");
-    return;
-  }
-
-  let promptOverrides = {};
-  const rawOverrides = refs.promptOverrides.value.trim();
-  if (rawOverrides) {
-    try {
-      promptOverrides = JSON.parse(rawOverrides);
-    } catch (error) {
-      log(`Prompt overrides JSON invalid: ${error.message}`, "ERROR");
-      return;
+function removeCustomStyle(styleId) {
+  const before = state.customStyles.length;
+  state.customStyles = state.customStyles.filter((item) => item.id !== styleId);
+  if (state.customStyles.length !== before) {
+    if (state.selectedStyleId === styleId) {
+      state.selectedStyleId = DEFAULT_STYLES[0]?.id || "";
     }
-  }
-
-  const imageUrl = refs.imageUrl.value.trim();
-  const projectId = refs.projectId.value.trim() || `web_${Date.now()}`;
-  refs.projectId.value = projectId;
-
-  const payload = {
-    user_id: state.userId,
-    platform: "web",
-    project_id: projectId,
-    image_url: imageUrl,
-    style_id: refs.styleId.value.trim(),
-    operation: refs.operation.value,
-    tier: refs.tier.value,
-    target_parts: selectedParts,
-    prompt_overrides: promptOverrides,
-  };
-
-  try {
-    const job = await apiRequest("/v1/ai/render-jobs", {
-      method: "POST",
-      body: payload,
-      authRequired: true,
-    });
-    state.currentJob = job;
-    renderJobResult();
-    if (!TERMINAL_JOB_STATUS.has(job.status)) {
-      startPolling(job.id);
-    }
-    log(`Render job created: ${job.id}`);
-    await trackEvent("web_render_submitted", {
-      operation: payload.operation,
-      status: job.status,
-    });
-  } catch (error) {
-    log(`Render request failed: ${error.message}`, "ERROR");
-  }
-}
-
-async function handleCheckoutSubmit(event) {
-  event.preventDefault();
-  if (!state.token) {
-    log("Login first to start checkout.", "ERROR");
-    return;
-  }
-
-  const planId = refs.checkoutPlanId.value;
-  if (!planId) {
-    log("Choose a plan for checkout.", "ERROR");
-    return;
-  }
-
-  try {
-    const session = await apiRequest("/v1/subscriptions/web/checkout-session", {
-      method: "POST",
-      authRequired: true,
-      body: {
-        user_id: state.userId,
-        plan_id: planId,
-        success_url: refs.successUrl.value.trim(),
-        cancel_url: refs.cancelUrl.value.trim(),
-      },
-    });
-    window.open(session.checkout_url, "_blank", "noopener,noreferrer");
-    log(`Checkout session created: ${session.session_id}`);
-    await trackEvent("checkout_started", {
-      status: "in_progress",
-    });
-  } catch (error) {
-    log(`Checkout failed: ${error.message}`, "ERROR");
-  }
-}
-
-function handleToolPresetClick(event) {
-  const trigger = event.target.closest("[data-tool-try]");
-  if (!trigger) {
-    return;
-  }
-  refs.styleId.value = trigger.dataset.style || refs.styleId.value;
-  refs.operation.value = trigger.dataset.operation || refs.operation.value;
-  refs.imageUrl.value = trigger.dataset.image || refs.imageUrl.value;
-  setTab("create");
-  log(`Preset applied: style=${refs.styleId.value}, operation=${refs.operation.value}`);
-}
-
-async function handleDiscoverTabClick(event) {
-  const trigger = event.target.closest("[data-discover-tab]");
-  if (!trigger) {
-    return;
-  }
-  const tab = trigger.dataset.discoverTab || "";
-  try {
-    await loadDiscover(tab);
-    renderDiscover();
-    await trackEvent("discover_tab_changed");
-  } catch (error) {
-    log(`Discover refresh failed: ${error.message}`, "ERROR");
+    saveCustomStyles();
+    renderStyles();
+    renderCreateSummary();
+    saveConnectionSettings();
+    log("Custom style removed.");
   }
 }
 
 function bindEvents() {
-  document.getElementById("loginButton").addEventListener("click", () => {
+  refs.settingsToggle.addEventListener("click", () => {
+    refs.connectionPanel.classList.toggle("hidden");
+  });
+
+  refs.loginButton.addEventListener("click", () => {
     void handleLogin();
   });
-  document.getElementById("logoutButton").addEventListener("click", () => {
+  refs.logoutButton.addEventListener("click", () => {
     void handleLogout();
   });
-  document.getElementById("refreshButton").addEventListener("click", () => {
+  refs.refreshButton.addEventListener("click", () => {
     void refreshAllData()
       .then(() => {
         renderAll();
@@ -754,7 +873,11 @@ function bindEvents() {
       });
   });
 
-  for (const button of refs.tabButtons) {
+  refs.jumpToCreate.addEventListener("click", () => {
+    setTab("create");
+  });
+
+  refs.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const tab = button.dataset.tab;
       if (!tab) {
@@ -763,62 +886,122 @@ function bindEvents() {
       setTab(tab);
       void trackEvent(`web_tab_opened_${tab}`);
     });
-  }
-
-  refs.toolsGrid.addEventListener("click", handleToolPresetClick);
-  document.getElementById("renderForm").addEventListener("submit", (event) => {
-    void handleRenderSubmit(event);
-  });
-  document.getElementById("checkoutForm").addEventListener("submit", (event) => {
-    void handleCheckoutSubmit(event);
-  });
-  refs.discoverTabs.addEventListener("click", (event) => {
-    void handleDiscoverTabClick(event);
   });
 
-  document.getElementById("loadDemoImage").addEventListener("click", () => {
+  refs.loadDemoImage.addEventListener("click", () => {
     refs.imageUrl.value = "https://picsum.photos/id/1068/1280/960";
-    if (!refs.projectId.value.trim()) {
-      refs.projectId.value = `web_${Date.now()}`;
+    renderImagePreview();
+    log("Demo image loaded.");
+  });
+
+  refs.imageUrl.addEventListener("input", () => {
+    renderImagePreview();
+    renderCreateSummary();
+  });
+
+  refs.roomOptions.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-room-id]");
+    if (!trigger) {
+      return;
     }
-    log("Loaded demo image into Create form.");
+    state.selectedRoomId = trigger.dataset.roomId || "";
+    renderRoomOptions();
+    renderCreateSummary();
+    saveConnectionSettings();
+  });
+
+  refs.styleGrid.addEventListener("click", (event) => {
+    const deleteTrigger = event.target.closest("[data-delete-style-id]");
+    if (deleteTrigger) {
+      removeCustomStyle(deleteTrigger.dataset.deleteStyleId || "");
+      return;
+    }
+    const trigger = event.target.closest("[data-style-id]");
+    if (!trigger) {
+      return;
+    }
+    state.selectedStyleId = trigger.dataset.styleId || "";
+    renderStyles();
+    renderCreateSummary();
+    saveConnectionSettings();
+  });
+
+  refs.customStyleForm.addEventListener("submit", addCustomStyle);
+
+  refs.wizardBack.addEventListener("click", () => {
+    setCreateStep(state.createStep - 1);
+  });
+  refs.wizardClose.addEventListener("click", () => {
+    setCreateStep(1);
+    refs.projectId.value = "";
+    refs.extraPrompt.value = "";
+    log("Create flow reset.");
+  });
+  refs.wizardNext.addEventListener("click", () => {
+    if (state.createStep < 4) {
+      if (!validateCreateStep(state.createStep)) {
+        return;
+      }
+      setCreateStep(state.createStep + 1);
+      return;
+    }
+    if (!validateCreateStep(1) || !validateCreateStep(2) || !validateCreateStep(3)) {
+      return;
+    }
+    void submitRender();
+  });
+
+  refs.operation.addEventListener("change", renderCreateSummary);
+  refs.tier.addEventListener("change", renderCreateSummary);
+  refs.targetPart.addEventListener("change", renderCreateSummary);
+  refs.extraPrompt.addEventListener("input", renderCreateSummary);
+  refs.projectId.addEventListener("input", renderCreateSummary);
+
+  refs.discoverTabs.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-discover-tab]");
+    if (!trigger) {
+      return;
+    }
+    const tab = trigger.dataset.discoverTab || "";
+    void loadDiscover(tab)
+      .then(() => {
+        renderDiscover();
+      })
+      .catch((error) => {
+        log(`Discover refresh failed: ${error.message}`, "ERROR");
+      });
+  });
+
+  refs.checkoutForm.addEventListener("submit", (event) => {
+    void handleCheckoutSubmit(event);
   });
 }
 
 async function bootstrap() {
-  loadSessionSettings();
+  loadConnectionSettings();
+  loadToken();
+  loadCustomStyles();
   setDefaultCheckoutUrls();
   bindEvents();
   setTab(state.currentTab);
-  renderTools();
-  renderJobResult();
+  setCreateStep(state.createStep);
 
   const checkoutState = new URLSearchParams(window.location.search).get("checkout");
   if (checkoutState === "success") {
-    log("Checkout returned with success URL. Syncing entitlement...");
-    await syncAfterCheckoutReturn(checkoutState);
+    log("Checkout success detected. Refreshing session...");
   } else if (checkoutState === "cancel") {
-    log("Checkout returned with cancel URL.");
-    await syncAfterCheckoutReturn(checkoutState);
+    log("Checkout canceled.");
   }
 
   try {
-    await loadCatalog();
-    await loadDiscover("");
-  } catch (error) {
-    log(`Failed to load public data: ${error.message}`, "ERROR");
-  }
-
-  if (state.token) {
-    try {
+    await refreshAllData();
+    if (checkoutState === "success" && state.token) {
       await refreshAuthenticatedData();
-    } catch (error) {
-      state.token = "";
-      state.me = null;
-      state.profile = null;
-      state.board = [];
-      saveSessionSettings();
-      log(`Saved session expired. Please login again (${error.message}).`, "ERROR");
+    }
+  } catch (error) {
+    log(`Initial load failed: ${error.message}`, "ERROR");
+    if (state.token) {
+      saveToken("");
     }
   }
 

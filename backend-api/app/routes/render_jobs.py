@@ -9,11 +9,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.analytics_store import ingest_event
-from app.auth import assert_same_user, get_optional_authenticated_user
+from app.auth import assert_same_user, get_authenticated_user
 from app.credit_store import consume_credits, grant_credits
 from app.job_store import (
     get_render_job,
     has_completed_preview,
+    is_project_owned_by_user,
     save_render_job,
     update_render_job_status,
     upsert_user_project,
@@ -36,6 +37,7 @@ from app.schemas import (
 )
 from app.settings_store import get_provider_settings
 from app.subscription_store import get_entitlement
+from app.url_safety import validate_external_http_url
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
 
@@ -56,7 +58,7 @@ def _build_prompt(payload: RenderJobCreateRequest) -> str:
 @router.post("/render-jobs", response_model=RenderJobRecord)
 async def create_render_job(
     payload: RenderJobCreateRequest,
-    auth_user_id: str | None = Depends(get_optional_authenticated_user),
+    auth_user_id: str = Depends(get_authenticated_user),
 ) -> RenderJobRecord:
     settings = get_provider_settings()
     registry = get_provider_registry()
@@ -65,9 +67,15 @@ async def create_render_job(
     daily_credit_limit_enabled = bool(variables.get("daily_credit_limit_enabled", True))
 
     if payload.user_id:
-        if not auth_user_id:
-            raise HTTPException(status_code=401, detail="authentication_required_for_user_jobs")
         assert_same_user(auth_user_id, payload.user_id)
+    user_id = payload.user_id or auth_user_id
+
+    try:
+        validate_external_http_url(str(payload.image_url))
+        if payload.mask_url:
+            validate_external_http_url(str(payload.mask_url))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if should_block_final_without_preview(
         preview_before_final_required=preview_before_final_required,
@@ -77,7 +85,7 @@ async def create_render_job(
         ingest_event(
             AnalyticsEventRequest(
                 event_name="render_blocked_preview_required",
-                user_id=payload.user_id,
+                user_id=user_id,
                 platform=payload.platform,
                 operation=payload.operation,
                 status=JobStatus.failed,
@@ -87,20 +95,20 @@ async def create_render_job(
 
     credit_cost = 0
     idempotency_key = None
-    if payload.user_id:
-        entitlement = get_entitlement(payload.user_id)
+    if user_id:
+        entitlement = get_entitlement(user_id)
         effective_plan_id = entitlement.plan_id if entitlement.status.value == "active" else "free"
         plan = get_plan(effective_plan_id) or get_plan("free")
         preview_cost = plan.preview_cost_credits if plan else 1
         final_cost = plan.final_cost_credits if plan else 2
         credit_cost = resolve_credit_cost(preview_cost, final_cost, payload.tier)
-        key_src = f"{payload.user_id}|{payload.project_id}|{payload.style_id}|{payload.tier.value}|{payload.image_url}"
+        key_src = f"{user_id}|{payload.project_id}|{payload.style_id}|{payload.tier.value}|{payload.image_url}"
         idempotency_key = f"rdr_{hashlib.sha256(key_src.encode('utf-8')).hexdigest()[:48]}"
         if daily_credit_limit_enabled and credit_cost > 0:
             try:
                 consume_credits(
                     CreditConsumeRequest(
-                        user_id=payload.user_id,
+                        user_id=user_id,
                         amount=credit_cost,
                         reason=f"render_{payload.tier.value}",
                         idempotency_key=idempotency_key,
@@ -114,7 +122,7 @@ async def create_render_job(
                 ingest_event(
                     AnalyticsEventRequest(
                         event_name="render_blocked_insufficient_credits",
-                        user_id=payload.user_id,
+                        user_id=user_id,
                         platform=payload.platform,
                         operation=payload.operation,
                         status=JobStatus.failed,
@@ -167,7 +175,7 @@ async def create_render_job(
             ingest_event(
                 AnalyticsEventRequest(
                     event_name="render_provider_attempt_failed",
-                    user_id=payload.user_id,
+                    user_id=user_id,
                     platform=payload.platform,
                     provider=provider_name,
                     operation=payload.operation,
@@ -176,11 +184,11 @@ async def create_render_job(
             )
 
     if not provider_result or not selected_provider or not selected_model:
-        if payload.user_id and daily_credit_limit_enabled and credit_cost > 0 and idempotency_key:
+        if user_id and daily_credit_limit_enabled and credit_cost > 0 and idempotency_key:
             try:
                 grant_credits(
                     CreditGrantRequest(
-                        user_id=payload.user_id,
+                        user_id=user_id,
                         amount=credit_cost,
                         reason="render_refund_dispatch_failed",
                         idempotency_key=f"refund_{idempotency_key}",
@@ -192,7 +200,7 @@ async def create_render_job(
         ingest_event(
             AnalyticsEventRequest(
                 event_name="render_dispatch_failed",
-                user_id=payload.user_id,
+                user_id=user_id,
                 platform=payload.platform,
                 provider=attempted_providers[0] if attempted_providers else None,
                 operation=payload.operation,
@@ -225,13 +233,13 @@ async def create_render_job(
     )
 
     save_render_job(job)
-    if payload.user_id:
-        upsert_user_project(payload.user_id, payload.project_id, str(payload.image_url))
+    if user_id:
+        upsert_user_project(user_id, payload.project_id, str(payload.image_url))
 
     ingest_event(
         AnalyticsEventRequest(
             event_name="render_dispatched",
-            user_id=payload.user_id,
+            user_id=user_id,
             platform=payload.platform,
             provider=selected_provider,
             operation=payload.operation,
@@ -245,10 +253,15 @@ async def create_render_job(
 
 
 @router.get("/render-jobs/{job_id}", response_model=RenderJobStatusResponse)
-async def get_render_job_status(job_id: str) -> RenderJobStatusResponse:
+async def get_render_job_status(
+    job_id: str,
+    auth_user_id: str = Depends(get_authenticated_user),
+) -> RenderJobStatusResponse:
     registry = get_provider_registry()
     job = get_render_job(job_id)
     if not job:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    if not is_project_owned_by_user(auth_user_id, job.project_id):
         raise HTTPException(status_code=404, detail="job_not_found")
 
     if job.status not in _TERMINAL_STATUSES:
@@ -293,10 +306,15 @@ async def get_render_job_status(job_id: str) -> RenderJobStatusResponse:
 
 
 @router.post("/render-jobs/{job_id}/cancel", response_model=CancelJobResponse)
-async def cancel_render_job(job_id: str) -> CancelJobResponse:
+async def cancel_render_job(
+    job_id: str,
+    auth_user_id: str = Depends(get_authenticated_user),
+) -> CancelJobResponse:
     registry = get_provider_registry()
     job = get_render_job(job_id)
     if not job:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    if not is_project_owned_by_user(auth_user_id, job.project_id):
         raise HTTPException(status_code=404, detail="job_not_found")
 
     provider = registry.get(job.provider)

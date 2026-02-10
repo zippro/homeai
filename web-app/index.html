@@ -3,136 +3,185 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HomeAI Web</title>
+    <title>home ai</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
-      <header class="top-header">
-        <div class="brand-block">
-          <p class="brand-kicker">HomeAI</p>
-          <h1>Web Studio</h1>
-          <p class="brand-subtitle">Single account across iOS, Android, and Web.</p>
+      <header class="topbar">
+        <div class="brand-wrap">
+          <p class="brand-kicker">Design Studio</p>
+          <h1>home ai</h1>
         </div>
-        <div class="connection-block">
+        <button id="settingsToggle" type="button" class="icon-btn" aria-label="Open settings">
+          <span>Settings</span>
+        </button>
+      </header>
+
+      <section id="connectionPanel" class="connection-panel hidden">
+        <h2>Connection</h2>
+        <p class="muted">
+          For production, configure API behind your domain. This panel is for development and QA sessions.
+        </p>
+        <div class="connection-grid">
           <label>
             API Base URL
-            <input id="apiBaseUrl" type="url" placeholder="http://localhost:8000" />
+            <input id="apiBaseUrl" type="url" placeholder="https://api.yourdomain.com" />
           </label>
           <label>
             User ID
-            <input id="userId" type="text" placeholder="homeai_demo_user" />
+            <input id="userId" type="text" placeholder="homeai_user_01" />
           </label>
-          <div class="header-actions">
-            <button id="loginButton" type="button" class="btn btn-primary">Login (Dev)</button>
-            <button id="logoutButton" type="button" class="btn">Logout</button>
-            <button id="refreshButton" type="button" class="btn">Refresh</button>
-          </div>
-          <div class="status-row">
-            <p id="authState" class="pill">Auth: logged out</p>
-            <p id="creditState" class="pill">Credits: -</p>
-            <p id="planState" class="pill">Plan: -</p>
-          </div>
         </div>
-      </header>
-
-      <nav class="tabbar">
-        <button type="button" class="tab-btn active" data-tab="tools">Tools</button>
-        <button type="button" class="tab-btn" data-tab="create">Create</button>
-        <button type="button" class="tab-btn" data-tab="discover">Discover</button>
-        <button type="button" class="tab-btn" data-tab="profile">My Profile</button>
-      </nav>
+        <div class="action-row">
+          <button id="loginButton" type="button" class="btn btn-primary">Login</button>
+          <button id="logoutButton" type="button" class="btn">Logout</button>
+          <button id="refreshButton" type="button" class="btn">Refresh</button>
+        </div>
+        <div class="pill-row">
+          <p id="authState" class="pill">Auth: logged out</p>
+          <p id="creditState" class="pill">Credits: -</p>
+          <p id="planState" class="pill">Plan: -</p>
+        </div>
+      </section>
 
       <main>
         <section id="panel-tools" class="panel active">
-          <div class="hero-card">
-            <div class="hero-images">
-              <img src="https://picsum.photos/id/1068/1200/800" alt="Before interior" />
-              <img src="https://picsum.photos/id/1074/1200/800" alt="After interior" />
-            </div>
-            <div class="hero-copy">
-              <h2>Design With AI Tools</h2>
-              <p>
-                Upload a room image, pick a style, and generate previews/finals with provider routing
-                controlled from your dashboard.
-              </p>
-            </div>
-          </div>
-
-          <div class="section-head">
-            <h3>Tool Presets</h3>
-            <p>Tap a preset to jump into Create with prefilled style and operation.</p>
-          </div>
-          <div id="toolsGrid" class="tool-grid"></div>
+          <article class="hero-card">
+            <h2>Design your home in 4 steps</h2>
+            <p>Upload photo, pick room, choose style, and generate AI previews or finals.</p>
+            <button id="jumpToCreate" type="button" class="btn btn-primary">Start Creating</button>
+          </article>
 
           <div class="section-head">
             <h3>Your Board</h3>
-            <p>Generated projects tied to your account.</p>
+            <p>Latest designs from your account</p>
           </div>
           <div id="boardGrid" class="board-grid"></div>
-          <p id="boardEmpty" class="empty-text hidden">No board items yet. Run your first generation in Create.</p>
+          <p id="boardEmpty" class="empty-text hidden">No projects yet. Create your first design now.</p>
         </section>
 
         <section id="panel-create" class="panel">
-          <div class="section-head">
-            <h2>Create</h2>
-            <p>Render job requests flow through the same backend as iOS and Android.</p>
-          </div>
-
-          <form id="renderForm" class="form-grid">
-            <label class="field-span-2">
-              Image URL
-              <input id="imageUrl" type="url" required placeholder="https://..." />
-            </label>
-            <label>
-              Project ID
-              <input id="projectId" type="text" placeholder="auto generated if empty" />
-            </label>
-            <label>
-              Style ID
-              <input id="styleId" type="text" required value="modern" />
-            </label>
-            <label>
-              Operation
-              <select id="operation">
-                <option value="restyle">restyle</option>
-                <option value="replace">replace</option>
-                <option value="remove">remove</option>
-                <option value="repaint">repaint</option>
-              </select>
-            </label>
-            <label>
-              Tier
-              <select id="tier">
-                <option value="preview">preview</option>
-                <option value="final">final</option>
-              </select>
-            </label>
-            <fieldset class="field-span-2">
-              <legend>Target Parts</legend>
-              <div class="checkbox-row">
-                <label><input type="checkbox" name="targetPart" value="full_room" checked /> full_room</label>
-                <label><input type="checkbox" name="targetPart" value="walls" /> walls</label>
-                <label><input type="checkbox" name="targetPart" value="floor" /> floor</label>
-                <label><input type="checkbox" name="targetPart" value="furniture" /> furniture</label>
-                <label><input type="checkbox" name="targetPart" value="decor" /> decor</label>
-              </div>
-            </fieldset>
-            <label class="field-span-2">
-              Prompt Overrides JSON (optional)
-              <textarea id="promptOverrides" rows="4" placeholder='{"lighting":"golden hour"}'></textarea>
-            </label>
-            <div class="action-row field-span-2">
-              <button id="renderSubmit" type="submit" class="btn btn-primary">Start Render Job</button>
-              <button id="loadDemoImage" type="button" class="btn">Use Demo Image</button>
+          <article class="wizard-card">
+            <div class="wizard-head">
+              <button id="wizardBack" type="button" class="icon-btn compact">Back</button>
+              <p id="createStepLabel">Step 1 / 4</p>
+              <button id="wizardClose" type="button" class="icon-btn compact">Reset</button>
             </div>
-          </form>
+
+            <div class="step-track">
+              <span id="stepDot1" class="step-dot active"></span>
+              <span id="stepDot2" class="step-dot"></span>
+              <span id="stepDot3" class="step-dot"></span>
+              <span id="stepDot4" class="step-dot"></span>
+            </div>
+
+            <section id="createStep1" class="create-step active">
+              <h3>Step 1: Add Photo</h3>
+              <p class="muted">Paste a room image URL to start. Upload support can be added on your backend later.</p>
+              <label>
+                Image URL
+                <input id="imageUrl" type="url" required placeholder="https://..." />
+              </label>
+              <div class="action-row">
+                <button id="loadDemoImage" type="button" class="btn">Use Demo</button>
+              </div>
+              <div id="imagePreviewCard" class="image-preview-card">
+                <p class="muted">Image preview appears here.</p>
+              </div>
+            </section>
+
+            <section id="createStep2" class="create-step">
+              <h3>Step 2: Choose Room</h3>
+              <p class="muted">Select the room type for better prompt context.</p>
+              <div id="roomOptions" class="room-grid"></div>
+            </section>
+
+            <section id="createStep3" class="create-step">
+              <h3>Step 3: Select Style</h3>
+              <p class="muted">Choose a design style or create your own.</p>
+              <div id="styleGrid" class="style-grid"></div>
+
+              <article class="custom-style-card">
+                <h4>Create Your Own Style</h4>
+                <form id="customStyleForm" class="custom-style-form">
+                  <label>
+                    Style Name
+                    <input id="customStyleName" type="text" placeholder="Scandinavian Calm" required />
+                  </label>
+                  <label>
+                    Style Prompt
+                    <textarea
+                      id="customStylePrompt"
+                      rows="3"
+                      placeholder="Bright nordic interior, warm oak textures, natural daylight..."
+                      required
+                    ></textarea>
+                  </label>
+                  <label>
+                    Thumbnail URL
+                    <input id="customStyleThumb" type="url" placeholder="https://..." required />
+                  </label>
+                  <button type="submit" class="btn btn-primary">Add Style</button>
+                </form>
+              </article>
+            </section>
+
+            <section id="createStep4" class="create-step">
+              <h3>Step 4: Review & Generate</h3>
+              <div id="createSummary" class="summary-card"></div>
+              <form id="renderForm" class="render-form">
+                <label>
+                  Project ID
+                  <input id="projectId" type="text" placeholder="auto generated if empty" />
+                </label>
+                <label>
+                  Operation
+                  <select id="operation">
+                    <option value="restyle">restyle</option>
+                    <option value="replace">replace</option>
+                    <option value="remove">remove</option>
+                    <option value="repaint">repaint</option>
+                  </select>
+                </label>
+                <label>
+                  Quality
+                  <select id="tier">
+                    <option value="preview">preview</option>
+                    <option value="final">final</option>
+                  </select>
+                </label>
+                <label>
+                  Target Parts
+                  <select id="targetPart">
+                    <option value="full_room">full_room</option>
+                    <option value="walls">walls</option>
+                    <option value="floor">floor</option>
+                    <option value="furniture">furniture</option>
+                    <option value="decor">decor</option>
+                  </select>
+                </label>
+                <label>
+                  Extra Prompt (optional)
+                  <textarea
+                    id="extraPrompt"
+                    rows="3"
+                    placeholder="Add details like camera angle, lighting, material preference..."
+                  ></textarea>
+                </label>
+              </form>
+            </section>
+
+            <div class="action-row wizard-actions">
+              <button id="wizardNext" type="button" class="btn btn-primary">Continue</button>
+            </div>
+          </article>
 
           <div id="jobResult" class="job-card">
             <p class="muted">No render job yet.</p>
@@ -141,8 +190,8 @@
 
         <section id="panel-discover" class="panel">
           <div class="section-head">
-            <h2>Discover</h2>
-            <p>Inspiration feed with categories synced from API.</p>
+            <h3>Discover</h3>
+            <p>Ideas you can reproduce with one tap</p>
           </div>
           <div id="discoverTabs" class="discover-tabs"></div>
           <div id="discoverSections" class="discover-sections"></div>
@@ -150,48 +199,34 @@
 
         <section id="panel-profile" class="panel">
           <div class="section-head">
-            <h2>My Profile</h2>
-            <p>Credits, entitlement, and checkout for web subscriptions.</p>
+            <h3>My Profile</h3>
+            <p>Subscription and account status</p>
           </div>
           <div id="profileSummary" class="profile-summary"></div>
 
           <div class="section-head">
-            <h3>Active Plan Catalog</h3>
+            <h3>Plans</h3>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  <th>Credits/Day</th>
-                  <th>Preview</th>
-                  <th>Final</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody id="catalogTableBody"></tbody>
-            </table>
-          </div>
+          <div id="catalogCards" class="catalog-cards"></div>
 
-          <form id="checkoutForm" class="form-grid">
+          <form id="checkoutForm" class="checkout-form">
             <label>
-              Checkout Plan
+              Selected Plan
               <select id="checkoutPlanId"></select>
             </label>
-            <label>
-              Success URL
-              <input id="successUrl" type="url" />
-            </label>
-            <label class="field-span-2">
-              Cancel URL
-              <input id="cancelUrl" type="url" />
-            </label>
-            <div class="action-row field-span-2">
-              <button id="checkoutButton" type="submit" class="btn btn-accent">Start Web Checkout</button>
-            </div>
+            <input id="successUrl" type="hidden" />
+            <input id="cancelUrl" type="hidden" />
+            <button id="checkoutButton" type="submit" class="btn btn-accent">Start Checkout</button>
           </form>
         </section>
       </main>
+
+      <nav class="bottom-nav">
+        <button type="button" class="tab-btn active" data-tab="tools">Tools</button>
+        <button type="button" class="tab-btn" data-tab="create">Create</button>
+        <button type="button" class="tab-btn" data-tab="discover">Discover</button>
+        <button type="button" class="tab-btn" data-tab="profile">My Profile</button>
+      </nav>
 
       <section class="log-card">
         <h4>Activity Log</h4>

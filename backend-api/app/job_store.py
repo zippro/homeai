@@ -52,6 +52,12 @@ def get_render_job(job_id: str) -> RenderJobRecord | None:
         return _to_schema(model)
 
 
+def is_project_owned_by_user(user_id: str, project_id: str) -> bool:
+    with session_scope() as session:
+        project = session.get(UserProjectModel, project_id)
+        return bool(project and project.user_id == user_id)
+
+
 def upsert_user_project(user_id: str, project_id: str, cover_image_url: str | None) -> None:
     with session_scope() as session:
         model = session.get(UserProjectModel, project_id)

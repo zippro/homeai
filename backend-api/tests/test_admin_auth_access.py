@@ -38,7 +38,35 @@ class AdminAuthAccessTests(unittest.TestCase):
         return response.json()["access_token"]
 
     def test_admin_open_mode_allows_unauthenticated_requests(self) -> None:
-        with patch.dict(os.environ, {"ADMIN_API_TOKEN": "", "ADMIN_USER_IDS": ""}, clear=False):
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "development", "ADMIN_API_TOKEN": "", "ADMIN_USER_IDS": ""},
+            clear=False,
+        ):
+            response = self.client.get("/v1/admin/analytics/overview")
+            self.assertEqual(response.status_code, 200)
+
+    def test_admin_open_mode_is_denied_in_production_by_default(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "production", "ADMIN_API_TOKEN": "", "ADMIN_USER_IDS": ""},
+            clear=False,
+        ):
+            response = self.client.get("/v1/admin/analytics/overview")
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.json()["detail"], "admin_auth_not_configured")
+
+    def test_admin_open_mode_can_be_explicitly_enabled_in_production(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "ADMIN_API_TOKEN": "",
+                "ADMIN_USER_IDS": "",
+                "ALLOW_OPEN_ADMIN_MODE": "true",
+            },
+            clear=False,
+        ):
             response = self.client.get("/v1/admin/analytics/overview")
             self.assertEqual(response.status_code, 200)
 

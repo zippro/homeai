@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from unittest.mock import patch
 
 try:
     from sqlalchemy import delete
@@ -43,6 +44,9 @@ class SubscriptionStoreTests(unittest.TestCase):
             session.execute(delete(SubscriptionEntitlementModel))
             session.execute(delete(SubscriptionWebhookEventModel))
         os.environ.pop("WEB_BILLING_WEBHOOK_SECRET", None)
+        os.environ.pop("STOREKIT_WEBHOOK_SECRET", None)
+        os.environ.pop("GOOGLE_PLAY_WEBHOOK_SECRET", None)
+        os.environ.pop("APP_ENV", None)
 
     def test_create_web_checkout_session_returns_checkout_url(self) -> None:
         session_data = create_web_checkout_session(
@@ -104,6 +108,22 @@ class SubscriptionStoreTests(unittest.TestCase):
         self.assertEqual(authorized.message, "processed")
         self.assertEqual(entitlement_after_auth.plan_id, "pro")
         self.assertEqual(entitlement_after_auth.source.value, "web")
+
+    def test_web_billing_webhook_requires_secret_in_production_when_not_configured(self) -> None:
+        payload = WebBillingWebhookRequest(
+            event_id="web_evt_prod_reject_1",
+            user_id="web-user-prod-1",
+            product_id="pro_monthly_web",
+            status=SubscriptionStatus.active,
+        )
+        with patch.dict(os.environ, {"APP_ENV": "production", "WEB_BILLING_WEBHOOK_SECRET": ""}, clear=False):
+            unauthorized = handle_web_billing_webhook(payload, header_secret=None)
+        entitlement = get_entitlement("web-user-prod-1")
+
+        self.assertFalse(unauthorized.processed)
+        self.assertEqual(unauthorized.message, "unauthorized")
+        self.assertEqual(entitlement.plan_id, "free")
+        self.assertEqual(entitlement.status.value, "inactive")
 
     def test_active_entitlement_is_not_downgraded_by_non_active_webhook(self) -> None:
         active_payload = WebBillingWebhookRequest(

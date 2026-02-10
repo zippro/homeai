@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from urllib.parse import quote_plus
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from sqlalchemy import desc, select
 from app.db import session_scope
 from app.models import SubscriptionEntitlementModel, SubscriptionWebhookEventModel
 from app.product_store import list_plans
+from app.runtime_env import is_production_mode
 from app.schemas import (
     GooglePlayWebhookRequest,
     WebBillingWebhookRequest,
@@ -73,8 +75,7 @@ def upsert_entitlement(user_id: str, payload: SubscriptionEntitlementUpsertReque
 
 
 def handle_storekit_webhook(payload: StoreKitWebhookRequest, header_secret: str | None) -> WebhookProcessResponse:
-    expected_secret = os.getenv("STOREKIT_WEBHOOK_SECRET")
-    if expected_secret and header_secret != expected_secret:
+    if not _is_valid_webhook_secret("STOREKIT_WEBHOOK_SECRET", header_secret):
         return WebhookProcessResponse(event_id=payload.event_id or "unknown", processed=False, message="unauthorized")
 
     event_id = payload.event_id or f"storekit_{uuid4()}"
@@ -114,8 +115,7 @@ def handle_storekit_webhook(payload: StoreKitWebhookRequest, header_secret: str 
 
 
 def handle_google_play_webhook(payload: GooglePlayWebhookRequest, header_secret: str | None) -> WebhookProcessResponse:
-    expected_secret = os.getenv("GOOGLE_PLAY_WEBHOOK_SECRET")
-    if expected_secret and header_secret != expected_secret:
+    if not _is_valid_webhook_secret("GOOGLE_PLAY_WEBHOOK_SECRET", header_secret):
         return WebhookProcessResponse(event_id=payload.event_id or "unknown", processed=False, message="unauthorized")
 
     event_id = payload.event_id or f"gplay_{uuid4()}"
@@ -155,8 +155,7 @@ def handle_google_play_webhook(payload: GooglePlayWebhookRequest, header_secret:
 
 
 def handle_web_billing_webhook(payload: WebBillingWebhookRequest, header_secret: str | None) -> WebhookProcessResponse:
-    expected_secret = os.getenv("WEB_BILLING_WEBHOOK_SECRET")
-    if expected_secret and header_secret != expected_secret:
+    if not _is_valid_webhook_secret("WEB_BILLING_WEBHOOK_SECRET", header_secret):
         return WebhookProcessResponse(event_id=payload.event_id or "unknown", processed=False, message="unauthorized")
 
     event_id = payload.event_id or f"web_{uuid4()}"
@@ -356,3 +355,10 @@ def _to_schema(model: SubscriptionEntitlementModel) -> SubscriptionEntitlementRe
         expires_at=model.expires_at,
         metadata=model.metadata_json or {},
     )
+
+
+def _is_valid_webhook_secret(env_key: str, header_secret: str | None) -> bool:
+    expected_secret = os.getenv(env_key, "").strip()
+    if expected_secret:
+        return bool(header_secret) and secrets.compare_digest(expected_secret, header_secret)
+    return not is_production_mode()
