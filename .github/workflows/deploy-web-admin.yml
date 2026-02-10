@@ -48,7 +48,14 @@ jobs:
           npm run check
           npm run build
 
+      - name: Skip web deploy when Vercel secrets are missing
+        if: ${{ env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == '' }}
+        run: |
+          echo "VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_WEB_PROJECT_ID not configured."
+          echo "Skipping web deploy job."
+
       - name: Deploy web app to Vercel
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
         run: |
           npm install --global vercel@latest
           cd web-app
@@ -85,7 +92,14 @@ jobs:
           npm run check
           npm run build
 
+      - name: Skip admin deploy when Vercel secrets are missing
+        if: ${{ env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == '' }}
+        run: |
+          echo "VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_ADMIN_PROJECT_ID not configured."
+          echo "Skipping admin deploy job."
+
       - name: Deploy admin dashboard to Vercel
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
         run: |
           npm install --global vercel@latest
           cd admin-dashboard
