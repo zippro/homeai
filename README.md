@@ -56,3 +56,5 @@ docker build -t homeai-backend:local .
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/github-production-setup.md`
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/ab-testing-scenarios.md`
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/universal-platform-implementation-plan.md`
+- `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/web-first-step-by-step-plan.md`
+- `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/final-step-by-step-actions.md`
