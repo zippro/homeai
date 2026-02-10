@@ -258,6 +258,10 @@
           Create and maintain reusable styles with prompt templates and thumbnail URLs. These styles are consumed by
           web, iOS, and Android clients.
         </p>
+        <div class="style-status-row">
+          <p id="styleCatalogState" class="badge badge-outline">Styles: 0</p>
+          <p class="section-note no-margin">`Upsert Style` means create new style ID or update existing style ID.</p>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -267,6 +271,7 @@
                 <th>Thumbnail</th>
                 <th>Tags</th>
                 <th>Rooms</th>
+                <th>Model Route</th>
                 <th>Sort</th>
                 <th>Active</th>
                 <th>Action</th>
@@ -276,6 +281,13 @@
           </table>
         </div>
         <form id="styleForm" class="grid two-columns">
+          <label>
+            Quick Template
+            <select id="styleTemplateSelect"></select>
+          </label>
+          <div class="actions align-end">
+            <button id="applyStyleTemplate" type="button" class="btn">Apply Template</button>
+          </div>
           <label>
             Style ID
             <input id="styleId" required type="text" placeholder="modern" />
@@ -314,6 +326,35 @@
             <button id="deleteStyleButton" type="button" class="btn btn-danger">Delete Style</button>
           </div>
         </form>
+        <div>
+          <h3>Active Generator Route</h3>
+          <p class="section-note">
+            Verify which provider/model pair will be used for style generation before you publish style changes.
+          </p>
+          <div class="actions">
+            <label class="inline-control">
+              Operation
+              <select id="styleRouteOperation">
+                <option value="restyle">restyle</option>
+                <option value="replace">replace</option>
+                <option value="remove">remove</option>
+                <option value="repaint">repaint</option>
+              </select>
+            </label>
+            <label class="inline-control">
+              Target Part
+              <select id="styleRoutePart">
+                <option value="full_room">full_room</option>
+                <option value="walls">walls</option>
+                <option value="floor">floor</option>
+                <option value="furniture">furniture</option>
+                <option value="decor">decor</option>
+              </select>
+            </label>
+            <button id="refreshStyleRoute" type="button" class="btn">Refresh Route</button>
+          </div>
+          <pre id="styleRoutePreview" class="log-output compact-log">No style route preview yet.</pre>
+        </div>
         <div>
           <h3>Style Preview Grid</h3>
           <p class="section-note">Visual check for thumbnails and prompt quality before release.</p>

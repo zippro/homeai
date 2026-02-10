@@ -127,6 +127,7 @@ const state = {
   discoverFeed: null,
   catalog: [],
   currentJob: null,
+  routePreview: null,
   pollHandle: null,
   setupHintShown: false,
 };
@@ -183,6 +184,8 @@ const refs = {
   customStylePrompt: document.getElementById("customStylePrompt"),
   customStyleThumb: document.getElementById("customStyleThumb"),
   createSummary: document.getElementById("createSummary"),
+  modelRouteValue: document.getElementById("modelRouteValue"),
+  modelRouteMeta: document.getElementById("modelRouteMeta"),
   renderForm: document.getElementById("renderForm"),
   projectId: document.getElementById("projectId"),
   operation: document.getElementById("operation"),
@@ -570,6 +573,17 @@ function renderCreateSummary() {
   ].join("");
 }
 
+function renderModelRoutePreview() {
+  const route = state.routePreview;
+  if (!route || route.error) {
+    refs.modelRouteValue.textContent = route?.error || "-";
+    refs.modelRouteMeta.textContent = "Set API URL and refresh to load provider/model route preview.";
+    return;
+  }
+  refs.modelRouteValue.textContent = `${route.selected_provider} / ${route.selected_model}`;
+  refs.modelRouteMeta.textContent = `Operation ${route.operation} • ${route.tier} • ${route.target_parts.join(", ")} • settings v${route.settings_version ?? "-"}`;
+}
+
 function setCreateStep(step) {
   state.createStep = Math.min(Math.max(step, 1), 4);
   refs.createStepLabel.textContent = `Step ${state.createStep} / 4`;
@@ -583,6 +597,7 @@ function setCreateStep(step) {
   refs.wizardNext.textContent = state.createStep === 4 ? "Generate Design" : "Continue";
   if (state.createStep === 4) {
     renderCreateSummary();
+    void loadProviderRoutePreview().then(renderModelRoutePreview);
   }
 }
 
@@ -702,11 +717,32 @@ function renderAll() {
   renderStyles();
   renderImagePreview();
   renderCreateSummary();
+  renderModelRoutePreview();
   renderJobResult();
   renderDiscover();
   renderCatalog();
   renderProfile();
   setCreateStep(state.createStep);
+}
+
+async function loadProviderRoutePreview() {
+  if (!state.apiBaseUrl) {
+    state.routePreview = { error: "API Base URL is required." };
+    return;
+  }
+  const operation = refs.operation.value;
+  const tier = refs.tier.value;
+  const targetPart = refs.targetPart.value;
+  const query = new URLSearchParams({
+    operation,
+    tier,
+    target_part: targetPart,
+  });
+  try {
+    state.routePreview = await apiRequest(`/v1/config/provider-route-preview?${query.toString()}`, { authRequired: false });
+  } catch (error) {
+    state.routePreview = { error: `Route preview unavailable: ${error.message}` };
+  }
 }
 
 function stopPolling() {
@@ -783,10 +819,11 @@ async function refreshAllData() {
     state.me = null;
     state.profile = null;
     state.board = [];
+    state.routePreview = { error: "Set API Base URL from Settings." };
     showSetupHint("Set API Base URL from Settings, then click Refresh or Login.");
     return;
   }
-  await Promise.all([loadDiscover(state.discoverTab), loadCatalog(), loadStyles()]);
+  await Promise.all([loadDiscover(state.discoverTab), loadCatalog(), loadStyles(), loadProviderRoutePreview()]);
   if (state.token) {
     await refreshAuthenticatedData();
   } else {
@@ -1116,9 +1153,18 @@ function bindEvents() {
     void submitRender();
   });
 
-  refs.operation.addEventListener("change", renderCreateSummary);
-  refs.tier.addEventListener("change", renderCreateSummary);
-  refs.targetPart.addEventListener("change", renderCreateSummary);
+  refs.operation.addEventListener("change", () => {
+    renderCreateSummary();
+    void loadProviderRoutePreview().then(renderModelRoutePreview);
+  });
+  refs.tier.addEventListener("change", () => {
+    renderCreateSummary();
+    void loadProviderRoutePreview().then(renderModelRoutePreview);
+  });
+  refs.targetPart.addEventListener("change", () => {
+    renderCreateSummary();
+    void loadProviderRoutePreview().then(renderModelRoutePreview);
+  });
   refs.extraPrompt.addEventListener("input", renderCreateSummary);
   refs.projectId.addEventListener("input", renderCreateSummary);
 

@@ -40,6 +40,100 @@ const DEFAULT_PROVIDER_SETTINGS = {
   },
 };
 
+const STYLE_TEMPLATES = [
+  {
+    style_id: "modern",
+    display_name: "Modern",
+    prompt:
+      "Modern clean interior design with balanced composition, natural daylight, premium materials, and minimal visual clutter.",
+    thumbnail_url: "https://picsum.photos/id/1068/900/900",
+    tags: ["clean", "contemporary"],
+    room_types: ["living_room", "bedroom", "kitchen"],
+    sort_order: 10,
+    is_active: true,
+  },
+  {
+    style_id: "minimalistic",
+    display_name: "Minimalistic",
+    prompt: "Minimalist interior with uncluttered surfaces, neutral palette, and calm airy atmosphere.",
+    thumbnail_url: "https://picsum.photos/id/1059/900/900",
+    tags: ["minimal", "neutral"],
+    room_types: ["living_room", "bedroom", "home_office"],
+    sort_order: 20,
+    is_active: true,
+  },
+  {
+    style_id: "bohemian",
+    display_name: "Bohemian",
+    prompt: "Bohemian interior with layered textiles, handcrafted decor, earthy tones, and eclectic accents.",
+    thumbnail_url: "https://picsum.photos/id/1044/900/900",
+    tags: ["warm", "eclectic"],
+    room_types: ["living_room", "bedroom", "coffee_shop"],
+    sort_order: 30,
+    is_active: true,
+  },
+  {
+    style_id: "scandinavian",
+    display_name: "Scandinavian",
+    prompt: "Scandinavian interior with warm oak details, white walls, cozy textiles, and soft daylight.",
+    thumbnail_url: "https://picsum.photos/id/1025/900/900",
+    tags: ["nordic", "bright"],
+    room_types: ["living_room", "bedroom", "kitchen"],
+    sort_order: 40,
+    is_active: true,
+  },
+  {
+    style_id: "industrial",
+    display_name: "Industrial",
+    prompt: "Industrial loft style with exposed materials, black metal accents, and cinematic contrast.",
+    thumbnail_url: "https://picsum.photos/id/1067/900/900",
+    tags: ["loft", "urban"],
+    room_types: ["living_room", "home_office", "restaurant"],
+    sort_order: 50,
+    is_active: true,
+  },
+  {
+    style_id: "japandi",
+    display_name: "Japandi",
+    prompt: "Japandi interior with serene palette, organic forms, low furniture, and tactile natural textures.",
+    thumbnail_url: "https://picsum.photos/id/1015/900/900",
+    tags: ["calm", "organic"],
+    room_types: ["living_room", "bedroom", "home_office"],
+    sort_order: 60,
+    is_active: true,
+  },
+  {
+    style_id: "rustic",
+    display_name: "Rustic",
+    prompt: "Rustic interior with weathered wood, warm ambient lighting, and handcrafted cozy details.",
+    thumbnail_url: "https://picsum.photos/id/1008/900/900",
+    tags: ["cozy", "natural"],
+    room_types: ["living_room", "dining_room"],
+    sort_order: 70,
+    is_active: true,
+  },
+  {
+    style_id: "vintage",
+    display_name: "Vintage",
+    prompt: "Vintage-inspired interior with classic silhouettes, rich details, and timeless character.",
+    thumbnail_url: "https://picsum.photos/id/1074/900/900",
+    tags: ["classic", "heritage"],
+    room_types: ["living_room", "study_room", "restaurant"],
+    sort_order: 80,
+    is_active: true,
+  },
+  {
+    style_id: "christmas",
+    display_name: "Christmas",
+    prompt: "Festive Christmas interior with warm lights, seasonal decor, and cozy holiday atmosphere.",
+    thumbnail_url: "https://picsum.photos/id/1041/900/900",
+    tags: ["seasonal", "festive"],
+    room_types: ["living_room", "exterior"],
+    sort_order: 90,
+    is_active: true,
+  },
+];
+
 let providerSettingsSnapshot = null;
 let providerOptions = [...INITIAL_PROVIDERS];
 let experimentTemplates = [];
@@ -151,6 +245,11 @@ const refs = {
   routePreviewTier: document.getElementById("routePreviewTier"),
   routePreviewPart: document.getElementById("routePreviewPart"),
   routePreviewResult: document.getElementById("routePreviewResult"),
+  styleCatalogState: document.getElementById("styleCatalogState"),
+  styleTemplateSelect: document.getElementById("styleTemplateSelect"),
+  styleRouteOperation: document.getElementById("styleRouteOperation"),
+  styleRoutePart: document.getElementById("styleRoutePart"),
+  styleRoutePreview: document.getElementById("styleRoutePreview"),
   sectionSearch: document.getElementById("sectionSearch"),
   groupFilterButtons: Array.from(document.querySelectorAll("[data-group-filter]")),
   sectionNavLinks: Array.from(document.querySelectorAll(".section-nav-link")),
@@ -687,10 +786,7 @@ function runRoutePreviewFromEditor() {
   const tier = refs.routePreviewTier.value;
   const targetPart = refs.routePreviewPart.value;
   const targetParts = [targetPart];
-
-  const candidates = resolveProviderCandidatesForPreview(settings, operation, tier, targetParts);
-  const selectedProvider = candidates[0];
-  const selectedModel = resolveProviderModelForPreview(settings, selectedProvider, tier);
+  const route = resolveRouteForTier(settings, operation, targetPart, tier);
 
   const summary = {
     operation,
@@ -699,14 +795,15 @@ function runRoutePreviewFromEditor() {
     default_provider: settings.default_provider,
     enabled_providers: settings.enabled_providers,
     fallback_chain: settings.fallback_chain,
-    candidate_chain: candidates,
-    selected_provider: selectedProvider,
-    selected_model: selectedModel,
+    candidate_chain: route.candidate_chain,
+    selected_provider: route.selected_provider,
+    selected_model: route.selected_model,
     provider_source_label: refs.providerSourceLabel.textContent || "unknown",
     evaluated_at: new Date().toISOString(),
   };
   refs.routePreviewResult.textContent = JSON.stringify(summary, null, 2);
-  log(`Route preview resolved: ${selectedProvider} / ${selectedModel}`);
+  renderStyleRoutePreview();
+  log(`Route preview resolved: ${route.selected_provider} / ${route.selected_model}`);
 }
 
 function buildProviderSettingsFromControls(baseSettings) {
@@ -846,6 +943,79 @@ function parseCsvList(rawValue) {
     .filter(Boolean);
 }
 
+function styleTemplateById(styleId) {
+  return STYLE_TEMPLATES.find((template) => template.style_id === styleId) || null;
+}
+
+function renderStyleTemplateOptions() {
+  if (!refs.styleTemplateSelect) {
+    return;
+  }
+  const options = ['<option value="">Choose template...</option>'];
+  STYLE_TEMPLATES.forEach((template) => {
+    options.push(
+      `<option value="${escapeHtml(template.style_id)}">${escapeHtml(template.display_name)} (${escapeHtml(template.style_id)})</option>`,
+    );
+  });
+  refs.styleTemplateSelect.innerHTML = options.join("");
+}
+
+function setStyleCatalogState(styles) {
+  if (!refs.styleCatalogState) {
+    return;
+  }
+  if (!Array.isArray(styles) || styles.length === 0) {
+    refs.styleCatalogState.textContent = "Styles: 0";
+    return;
+  }
+  const activeCount = styles.filter((style) => style.is_active).length;
+  const inactiveCount = styles.length - activeCount;
+  refs.styleCatalogState.textContent = `Styles: ${styles.length} (active ${activeCount}, inactive ${inactiveCount})`;
+}
+
+function resolveRouteForTier(settings, operation, targetPart, tier) {
+  const candidates = resolveProviderCandidatesForPreview(settings, operation, tier, [targetPart]);
+  const selectedProvider = candidates[0];
+  const selectedModel = resolveProviderModelForPreview(settings, selectedProvider, tier);
+  return {
+    tier,
+    target_part: targetPart,
+    operation,
+    candidate_chain: candidates,
+    selected_provider: selectedProvider,
+    selected_model: selectedModel,
+  };
+}
+
+function styleRouteSummaryText(settings, operation = "restyle", targetPart = "full_room") {
+  const previewRoute = resolveRouteForTier(settings, operation, targetPart, "preview");
+  const finalRoute = resolveRouteForTier(settings, operation, targetPart, "final");
+  return {
+    preview: `${previewRoute.selected_provider} / ${previewRoute.selected_model}`,
+    final: `${finalRoute.selected_provider} / ${finalRoute.selected_model}`,
+    details: {
+      operation,
+      target_part: targetPart,
+      preview: previewRoute,
+      final: finalRoute,
+      provider_source_label: refs.providerSourceLabel.textContent || "unknown",
+      evaluated_at: new Date().toISOString(),
+    },
+  };
+}
+
+function renderStyleRoutePreview() {
+  try {
+    const settings = normalizeProviderSettings(parseProviderSettingsFromEditor());
+    const operation = refs.styleRouteOperation?.value || "restyle";
+    const targetPart = refs.styleRoutePart?.value || "full_room";
+    const summary = styleRouteSummaryText(settings, operation, targetPart).details;
+    refs.styleRoutePreview.textContent = JSON.stringify(summary, null, 2);
+  } catch (error) {
+    refs.styleRoutePreview.textContent = `Style route preview error: ${error.message}`;
+  }
+}
+
 function setStyleForm(style) {
   document.getElementById("styleId").value = style?.style_id || "";
   document.getElementById("styleDisplayName").value = style?.display_name || "";
@@ -855,13 +1025,42 @@ function setStyleForm(style) {
   document.getElementById("styleRoomTypesCsv").value = (style?.room_types || []).join(", ");
   document.getElementById("styleSortOrder").value = String(style?.sort_order ?? 0);
   document.getElementById("styleActive").checked = Boolean(style?.is_active ?? true);
+  if (refs.styleTemplateSelect && style?.style_id) {
+    const template = styleTemplateById(style.style_id);
+    if (template) {
+      refs.styleTemplateSelect.value = template.style_id;
+    }
+  }
 }
 
 function renderStyles(styles) {
   styleCatalogCache = Array.isArray(styles) ? styles : [];
+  setStyleCatalogState(styles);
+
+  let routeText = {
+    preview: "-",
+    final: "-",
+  };
+  try {
+    const settings = normalizeProviderSettings(parseProviderSettingsFromEditor());
+    const routeOperation = refs.styleRouteOperation?.value || "restyle";
+    const routePart = refs.styleRoutePart?.value || "full_room";
+    routeText = styleRouteSummaryText(settings, routeOperation, routePart);
+  } catch {
+    // Keep fallback route labels when provider JSON is temporarily invalid.
+  }
 
   if (!Array.isArray(styles) || styles.length === 0) {
-    refs.stylesTableBody.innerHTML = '<tr><td colspan="8">No styles found.</td></tr>';
+    refs.stylesTableBody.innerHTML = `
+      <tr>
+        <td colspan="9">
+          <div class="actions no-margin">
+            <span>No styles found.</span>
+            <button id="seedStylesInline" type="button" class="btn btn-accent">Seed Example Styles</button>
+          </div>
+        </td>
+      </tr>
+    `;
     refs.styleGallery.innerHTML = '<p class="section-note">No style previews yet.</p>';
     return;
   }
@@ -881,6 +1080,11 @@ function renderStyles(styles) {
         <td>${thumb}</td>
         <td>${escapeHtml(tags)}</td>
         <td>${escapeHtml(roomTypes)}</td>
+        <td>
+          <span class="route-chip">preview</span> ${escapeHtml(routeText.preview)}
+          <br />
+          <span class="route-chip">final</span> ${escapeHtml(routeText.final)}
+        </td>
         <td>${Number(style.sort_order || 0)}</td>
         <td>${style.is_active ? "yes" : "no"}</td>
         <td><button type="button" class="btn" data-edit-style-id="${escapeHtml(style.style_id)}">Edit</button></td>
@@ -1205,6 +1409,7 @@ async function refreshVersionsAndAudit() {
 async function refreshStyles() {
   const styles = await apiRequest("/v1/admin/styles");
   renderStyles(styles);
+  renderStyleRoutePreview();
   log(`Loaded ${styles.length} style(s).`);
   if (styles.length === 0) {
     log("Style catalog is empty. Click 'Seed Example Styles' to bootstrap defaults.");
@@ -1864,6 +2069,21 @@ function bindEvents() {
     }
   });
 
+  document.getElementById("refreshStyleRoute").addEventListener("click", () => {
+    renderStyleRoutePreview();
+    renderStyles(styleCatalogCache);
+  });
+
+  refs.styleRouteOperation?.addEventListener("change", () => {
+    renderStyleRoutePreview();
+    renderStyles(styleCatalogCache);
+  });
+
+  refs.styleRoutePart?.addEventListener("change", () => {
+    renderStyleRoutePreview();
+    renderStyles(styleCatalogCache);
+  });
+
   document.getElementById("saveDraft").addEventListener("click", async () => {
     try {
       const payload = JSON.parse(refs.providerJsonEditor.value);
@@ -1939,6 +2159,22 @@ function bindEvents() {
     }
   });
 
+  document.getElementById("applyStyleTemplate").addEventListener("click", () => {
+    const styleId = refs.styleTemplateSelect?.value || "";
+    if (!styleId) {
+      log("Select a style template first.", "ERROR");
+      return;
+    }
+    const template = styleTemplateById(styleId);
+    if (!template) {
+      log(`Template not found: ${styleId}`, "ERROR");
+      return;
+    }
+    setStyleForm(template);
+    document.getElementById("deleteStyleId").value = template.style_id;
+    log(`Applied template ${template.display_name}.`);
+  });
+
   document.getElementById("seedStyles").addEventListener("click", async () => {
     try {
       const shouldOverwrite = window.confirm(
@@ -1954,6 +2190,21 @@ function bindEvents() {
   });
 
   refs.stylesTableBody.addEventListener("click", (event) => {
+    const seedInline = event.target.closest("#seedStylesInline");
+    if (seedInline) {
+      void (async () => {
+        try {
+          await seedStyles(false);
+          await refreshStyles();
+          await refreshProductAudit();
+          setLastSync();
+        } catch (error) {
+          log(`Seed styles failed: ${error.message}`, "ERROR");
+        }
+      })();
+      return;
+    }
+
     const trigger = event.target.closest("[data-edit-style-id]");
     if (!trigger) {
       return;
@@ -2404,19 +2655,12 @@ function bindEvents() {
 function init() {
   loadConnectionValues();
   setProviderEditor(DEFAULT_PROVIDER_SETTINGS, "defaults");
+  renderStyleTemplateOptions();
   renderProviderHealth({});
   renderProductAudit([]);
   renderStyles([]);
-  setStyleForm({
-    style_id: "modern",
-    display_name: "Modern",
-    prompt: "Modern clean interior design with balanced composition and natural daylight.",
-    thumbnail_url: "https://picsum.photos/id/1068/900/900",
-    is_active: true,
-    tags: ["clean", "contemporary"],
-    room_types: ["living_room", "bedroom", "kitchen"],
-    sort_order: 10,
-  });
+  setStyleForm(styleTemplateById("modern") || STYLE_TEMPLATES[0]);
+  renderStyleRoutePreview();
   renderExperiments([]);
   renderExperimentTemplates([]);
   renderExperimentAudit([]);

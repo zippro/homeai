@@ -684,6 +684,16 @@ class MobileBootstrapConfigResponse(BaseModel):
     provider_defaults: dict[str, Any]
 
 
+class ProviderRoutePreviewResponse(BaseModel):
+    operation: OperationType
+    tier: RenderTier
+    target_parts: list[ImagePart]
+    candidate_chain: list[str] = Field(default_factory=list)
+    selected_provider: str
+    selected_model: str
+    settings_version: int | None = None
+
+
 class CreditBalanceResponse(BaseModel):
     user_id: str
     balance: int
