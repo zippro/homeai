@@ -53,6 +53,7 @@ body {
 }
 
 .sidebar {
+  grid-column: 1;
   position: sticky;
   top: 1rem;
   display: grid;
@@ -175,18 +176,23 @@ h1 {
 }
 
 .layout {
+  grid-column: 2;
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
 }
 
 .card {
-  grid-column: 1 / -1;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1rem;
   box-shadow: var(--shadow);
+}
+
+.layout > .card {
+  grid-column: 1 / -1;
 }
 
 #connectionCard,
@@ -634,8 +640,13 @@ th {
   }
 
   .sidebar {
+    grid-column: 1;
     position: static;
     max-height: none;
+  }
+
+  .layout {
+    grid-column: 1;
   }
 
   .section-nav {
@@ -657,4 +668,3 @@ th {
     grid-template-columns: 1fr;
   }
 }
-
