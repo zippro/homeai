@@ -1,7 +1,7 @@
 const STORAGE_KEY = "homeai-admin-connection-v1";
 
 const defaults = {
-  apiBaseUrl: "http://localhost:8000",
+  apiBaseUrl: detectDefaultApiBaseUrl(),
   authToken: "",
   adminApiToken: "",
   adminActor: "dashboard",
@@ -269,6 +269,25 @@ function escapeHtml(value) {
 
 function normalizeBaseUrl(rawValue) {
   return rawValue.trim().replace(/\/+$/, "");
+}
+
+function detectDefaultApiBaseUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = normalizeBaseUrl(params.get("apiBaseUrl") || params.get("api") || "");
+  if (fromQuery) {
+    return fromQuery;
+  }
+  const host = String(window.location.hostname || "").toLowerCase();
+  if (host.endsWith(".nip.io")) {
+    return `${window.location.origin}/homeai-api`;
+  }
+  if (host.endsWith(".vercel.app")) {
+    return "https://46.62.209.244.nip.io/homeai-api";
+  }
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:8000";
+  }
+  return `${window.location.origin}/homeai-api`;
 }
 
 function getConnectionValues() {

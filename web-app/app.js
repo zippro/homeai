@@ -249,10 +249,17 @@ function detectDefaultApiBaseUrl() {
   if (fromQuery) {
     return fromQuery;
   }
+  const host = String(window.location.hostname || "").toLowerCase();
+  if (host.endsWith(".nip.io")) {
+    return `${window.location.origin}/homeai-api`;
+  }
+  if (host.endsWith(".vercel.app")) {
+    return "https://46.62.209.244.nip.io/homeai-api";
+  }
   if (isLocalHost()) {
     return "http://localhost:8000";
   }
-  return "";
+  return `${window.location.origin}/homeai-api`;
 }
 
 function shouldTreatAsNetworkError(message) {
