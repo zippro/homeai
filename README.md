@@ -60,3 +60,4 @@ docker build -t homeai-backend:local .
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/final-step-by-step-actions.md`
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/backend-hosting-plan-no-server.md`
 - `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/hetzner-step-by-step.md`
+- `/Users/narcadeteknolojiltd.sti./Documents/New project/docs/hetzner-existing-server-no-conflict.md`

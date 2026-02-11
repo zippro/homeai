@@ -64,10 +64,20 @@ Edit `deploy/Caddyfile` and set your real API domain.
 
 ## 5) Start backend stack
 
+If this server is dedicated to HomeAI:
+
 ```bash
 cd /opt/homeai/deploy
 docker compose -f docker-compose.hetzner.yml up -d --build
 docker compose -f docker-compose.hetzner.yml ps
+```
+
+If this server already hosts another website/proxy:
+
+```bash
+cd /opt/homeai/deploy
+docker compose -f docker-compose.hetzner.backend-only.yml up -d --build
+docker compose -f docker-compose.hetzner.backend-only.yml ps
 ```
 
 ## 6) Verify health and route preview

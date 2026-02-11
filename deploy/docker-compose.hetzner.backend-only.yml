@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  backend-api:
+    build:
+      context: ../backend-api
+      dockerfile: Dockerfile
+    image: homeai-backend:hetzner
+    container_name: homeai-backend-api
+    restart: unless-stopped
+    env_file:
+      - ./backend-api.env
+    ports:
+      - "127.0.0.1:18000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
