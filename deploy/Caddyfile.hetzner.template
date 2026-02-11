@@ -1,0 +1,6 @@
+# Replace with your real backend API domain.
+# Example: api.home-ai-five.com
+
+api.yourdomain.com {
+  reverse_proxy backend-api:8000
+}

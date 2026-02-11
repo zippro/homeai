@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  backend-api:
+    build:
+      context: ../backend-api
+      dockerfile: Dockerfile
+    image: homeai-backend:hetzner
+    container_name: homeai-backend-api
+    restart: unless-stopped
+    env_file:
+      - ./backend-api.env
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2
+    container_name: homeai-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend-api
+
+volumes:
+  caddy_data:
+  caddy_config:
